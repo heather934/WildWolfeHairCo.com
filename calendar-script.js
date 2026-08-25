@@ -4,7 +4,7 @@ class BookingCalendar {
         this.currentDate = new Date();
         this.bookedDates = [];
         this.selectedDate = null;
-        this.bookingEmail = 'zoee@example.com'; // Change to Zoee's actual email
+        this.adminEmails = ['zoee.burley@yahoo.com', 'h.m.ward1846@gmail.com'];
         
         this.initializeEventListeners();
         this.loadBookedDates();
@@ -150,8 +150,7 @@ class BookingCalendar {
         submitBtn.textContent = 'Processing...';
 
         try {
-            // Send email using EmailJS (Free service - no backend needed)
-            // First, initialize EmailJS (you'll need to set up account at emailjs.com)
+            // Send email to both admin emails
             await this.sendBookingEmail(bookingData);
 
             // Add to booked dates
@@ -177,41 +176,28 @@ class BookingCalendar {
     }
 
     async sendBookingEmail(bookingData) {
-        // Email service configuration
-        const emailContent = `
-            <h2>New Booking Request from ${bookingData.name}</h2>
-            <p><strong>Name:</strong> ${bookingData.name}</p>
-            <p><strong>Email:</strong> ${bookingData.email}</p>
-            <p><strong>Phone:</strong> ${bookingData.phone}</p>
-            <p><strong>Booking Date:</strong> ${bookingData.date}</p>
-            <p><strong>Service:</strong> ${bookingData.service}</p>
-            <p><strong>Message:</strong> ${bookingData.message || 'No additional notes'}</p>
-            <hr>
-            <p>Booking submitted on: ${bookingData.bookingDate}</p>
-        `;
+        // Send to both email addresses
+        for (const email of this.adminEmails) {
+            const formData = new FormData();
+            formData.append('name', bookingData.name);
+            formData.append('email', bookingData.email);
+            formData.append('phone', bookingData.phone);
+            formData.append('date', bookingData.date);
+            formData.append('service', bookingData.service);
+            formData.append('message', bookingData.message);
+            formData.append('_subject', `🎉 New Booking: ${bookingData.name} - ${bookingData.date}`);
+            formData.append('_captcha', 'false');
+            formData.append('_next', `${window.location.origin}/index.html?booking=confirmed`);
 
-        // Option 1: Using FormSubmit.co (Free, no signup required)
-        const formData = new FormData();
-        formData.append('name', bookingData.name);
-        formData.append('email', bookingData.email);
-        formData.append('phone', bookingData.phone);
-        formData.append('date', bookingData.date);
-        formData.append('service', bookingData.service);
-        formData.append('message', bookingData.message);
-        formData.append('_subject', `New Booking: ${bookingData.name} - ${bookingData.date}`);
-        formData.append('_captcha', 'false');
+            const response = await fetch(`https://formsubmit.co/${email}`, {
+                method: 'POST',
+                body: formData
+            });
 
-        // Replace with Zoee's email
-        const response = await fetch('https://formsubmit.co/zoee@example.com', {
-            method: 'POST',
-            body: formData
-        });
-
-        if (!response.ok) {
-            throw new Error('Email sending failed');
+            if (!response.ok) {
+                throw new Error(`Email sending failed to ${email}`);
+            }
         }
-
-        return response;
     }
 
     showConfirmation(bookingData) {
@@ -247,8 +233,10 @@ class BookingCalendar {
 
 // Initialize calendar when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    window.bookingCalendar = new BookingCalendar();
-    console.log('Booking Calendar initialized!');
+    if (document.getElementById('calendarGrid')) {
+        window.bookingCalendar = new BookingCalendar();
+        console.log('Booking Calendar initialized with admin emails: zoee.burley@yahoo.com, h.m.ward1846@gmail.com');
+    }
 });
 
 // Close modal when clicking outside
