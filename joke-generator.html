@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Joke Generator</title>
+    <link rel="stylesheet" href="joke-styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="joke-card">
+            <div class="header">
+                <h1>😂 Joke Generator</h1>
+                <p class="subtitle">Get a random laugh!</p>
+            </div>
+
+            <div class="joke-display">
+                <div class="joke-content" id="jokeContent">
+                    <p class="loading">Click the button to get a joke!</p>
+                </div>
+            </div>
+
+            <div class="joke-type" id="jokeType">
+                <span class="badge">Ready</span>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-primary" id="getJokeBtn">Get a Joke</button>
+                <button class="btn btn-secondary" id="copyJokeBtn">Copy Joke</button>
+            </div>
+
+            <div class="joke-counter">
+                <p>Jokes fetched: <span id="jokeCount">0</span></p>
+            </div>
+
+            <div class="filter-section">
+                <h3>Filter by Category:</h3>
+                <div class="category-buttons">
+                    <button class="category-btn active" data-category="any">Any</button>
+                    <button class="category-btn" data-category="general">General</button>
+                    <button class="category-btn" data-category="programming">Programming</button>
+                    <button class="category-btn" data-category="knock-knock">Knock-Knock</button>
+                </div>
+            </div>
+
+            <div class="feedback" id="feedback"></div>
+        </div>
+    </div>
+
+    <script src="joke-script.js"></script>
+</body>
+</html>
