@@ -1,0 +1,477 @@
+/* Admin Calendar Styles */
+.admin-calendar-section {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    margin-bottom: 30px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--sage);
+}
+
+.section-header h3 {
+    font-size: 18px;
+    color: var(--black);
+}
+
+/* Admin Calendar Grid */
+.admin-calendar-container {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.admin-calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.admin-calendar-header h4 {
+    font-size: 16px;
+    color: var(--black);
+    min-width: 200px;
+    text-align: center;
+}
+
+.admin-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.admin-calendar-day-header {
+    text-align: center;
+    font-weight: 700;
+    color: var(--olive-green);
+    padding: 10px;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.admin-calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 600;
+    min-height: 50px;
+    position: relative;
+    font-size: 13px;
+}
+
+.admin-calendar-day.other-month {
+    color: #ccc;
+    cursor: default;
+    background: #f5f5f5;
+}
+
+.admin-calendar-day.available {
+    background: #e0f2e0;
+    color: var(--olive-green);
+    border-color: var(--success);
+}
+
+.admin-calendar-day.available:hover {
+    background: var(--success);
+    color: white;
+    transform: scale(1.05);
+}
+
+.admin-calendar-day.booked {
+    background: #ffe0e0;
+    color: var(--danger);
+    border-color: var(--danger);
+    font-size: 11px;
+}
+
+.admin-calendar-day.blocked {
+    background: #fff3cd;
+    color: var(--warning);
+    border-color: var(--warning);
+    font-size: 11px;
+}
+
+.admin-calendar-day.today {
+    border: 3px solid var(--olive-green);
+}
+
+.admin-date-action {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: var(--danger);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.admin-date-action:hover {
+    transform: scale(1.2);
+    background: #dc2626;
+}
+
+/* Block Date Form */
+.block-date-form {
+    background: var(--ivory);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 4px solid var(--warning);
+}
+
+.block-date-form h4 {
+    color: var(--black);
+    margin-bottom: 15px;
+}
+
+.block-form-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.block-form-group label {
+    display: block;
+    font-weight: 600;
+    color: var(--black);
+    margin-bottom: 5px;
+    font-size: 13px;
+}
+
+.block-form-group input,
+.block-form-group textarea {
+    padding: 10px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+}
+
+.block-form-group input:focus,
+.block-form-group textarea:focus {
+    outline: none;
+    border-color: var(--olive-green);
+    box-shadow: 0 0 0 3px rgba(107, 126, 91, 0.1);
+}
+
+.block-form-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.block-form-actions button {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s;
+    font-size: 13px;
+}
+
+.block-form-actions .btn-success {
+    background: var(--success);
+    color: white;
+}
+
+.block-form-actions .btn-secondary {
+    background: var(--sage);
+    color: var(--black);
+}
+
+/* SMS Notifications Section */
+.sms-notifications-section {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    margin-bottom: 30px;
+    border-left: 4px solid var(--gold);
+}
+
+.sms-notifications-section h3 {
+    margin-bottom: 15px;
+    color: var(--black);
+}
+
+.sms-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--ivory);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.sms-status-text {
+    color: var(--black);
+    font-weight: 600;
+}
+
+.sms-status.enabled .sms-status-text {
+    color: var(--success);
+}
+
+.sms-status.disabled .sms-status-text {
+    color: var(--danger);
+}
+
+.sms-toggle {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.sms-toggle input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.sms-info {
+    background: #f0f8ff;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #2196F3;
+    margin-bottom: 20px;
+}
+
+.sms-info h4 {
+    color: #2196F3;
+    margin-bottom: 10px;
+}
+
+.sms-info ul {
+    margin-left: 20px;
+    color: var(--black);
+    line-height: 1.8;
+}
+
+.sms-info a {
+    color: #2196F3;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.sms-info a:hover {
+    text-decoration: underline;
+}
+
+.sms-setup {
+    background: var(--ivory);
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.sms-setup h3 {
+    color: var(--black);
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+.sms-setup h3:not(:first-child) {
+    margin-top: 20px;
+}
+
+.sms-setup ol {
+    margin-left: 20px;
+    color: var(--black);
+    line-height: 1.8;
+    margin-bottom: 20px;
+}
+
+.sms-setup li {
+    margin-bottom: 8px;
+}
+
+.sms-setup form {
+    display: grid;
+    gap: 15px;
+}
+
+.sms-setup .form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.sms-setup label {
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--black);
+    font-size: 14px;
+}
+
+.sms-setup input {
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+}
+
+.sms-setup input:focus {
+    outline: none;
+    border-color: var(--olive-green);
+    box-shadow: 0 0 0 3px rgba(107, 126, 91, 0.1);
+}
+
+.sms-setup button {
+    background: var(--success);
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 10px;
+}
+
+.sms-setup button:hover {
+    background: #059669;
+}
+
+/* Calendar Legend */
+.admin-calendar-legend {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: var(--ivory);
+    border-radius: 6px;
+    flex-wrap: wrap;
+}
+
+.admin-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--black);
+    font-weight: 500;
+}
+
+.admin-legend-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+}
+
+.admin-legend-color.available {
+    background: #e0f2e0;
+    border: 2px solid var(--success);
+}
+
+.admin-legend-color.booked {
+    background: #ffe0e0;
+    border: 2px solid var(--danger);
+}
+
+.admin-legend-color.blocked {
+    background: #fff3cd;
+    border: 2px solid var(--warning);
+}
+
+/* Modal Overrides */
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+.modal-content h2 {
+    color: var(--olive-green);
+    margin-bottom: 10px;
+}
+
+.modal-content > p {
+    color: var(--black);
+    margin-bottom: 20px;
+}
+
+.close {
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    color: #999;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.close:hover {
+    color: var(--black);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .admin-calendar-grid {
+        gap: 4px;
+    }
+
+    .admin-calendar-day {
+        min-height: 40px;
+        font-size: 11px;
+    }
+
+    .admin-calendar-day-header {
+        font-size: 10px;
+        padding: 5px;
+    }
+
+    .block-form-group {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-calendar-legend {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .modal-content {
+        padding: 20px;
+    }
+}
