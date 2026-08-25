@@ -1,0 +1,447 @@
+/* Global Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --sage: #a8b8a8;
+    --olive-green: #6b7e5b;
+    --ivory: #f5f3f0;
+    --gold: #d4af37;
+    --black: #000000;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Lato', sans-serif;
+    color: var(--black);
+    line-height: 1.6;
+    background-color: #fff;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Navigation */
+.navbar {
+    background-color: var(--sage);
+    color: var(--black);
+    padding: 20px 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.navbar .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-brand h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    margin-bottom: 5px;
+    color: var(--black);
+    font-weight: 700;
+}
+
+.nav-brand .tagline {
+    font-size: 12px;
+    color: var(--black);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    opacity: 0.8;
+}
+
+.nav-links {
+    display: flex;
+    list-style: none;
+    gap: 30px;
+}
+
+.nav-links a {
+    color: var(--black);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s;
+}
+
+.nav-links a:hover {
+    color: var(--gold);
+}
+
+/* Hero Section */
+.hero {
+    background: linear-gradient(135deg, var(--olive-green) 0%, var(--sage) 100%);
+    color: var(--ivory);
+    padding: 120px 20px;
+    text-align: center;
+    min-height: 600px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hero-content h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 54px;
+    margin-bottom: 20px;
+    line-height: 1.2;
+}
+
+.hero-content p {
+    font-size: 20px;
+    margin-bottom: 30px;
+    color: var(--ivory);
+    font-weight: 300;
+}
+
+.cta-button {
+    display: inline-block;
+    background-color: var(--gold);
+    color: var(--black);
+    padding: 15px 40px;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: 700;
+    transition: all 0.3s;
+    border: 2px solid var(--gold);
+}
+
+.cta-button:hover {
+    background-color: transparent;
+    color: var(--gold);
+}
+
+/* Services Section */
+.services {
+    padding: 80px 20px;
+    background-color: var(--ivory);
+}
+
+.services h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 42px;
+    text-align: center;
+    margin-bottom: 60px;
+    color: var(--black);
+}
+
+.services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 40px;
+}
+
+.service-card {
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    transition: all 0.3s;
+    border-left: 5px solid var(--olive-green);
+}
+
+.service-card:hover {
+    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    transform: translateY(-5px);
+    border-left-color: var(--gold);
+}
+
+.service-card h3 {
+    font-size: 20px;
+    margin-bottom: 15px;
+    color: var(--black);
+    font-weight: 700;
+}
+
+.service-card p {
+    color: var(--black);
+    line-height: 1.7;
+    opacity: 0.85;
+}
+
+/* Gallery Section */
+.gallery {
+    padding: 80px 20px;
+    background-color: #fff;
+}
+
+.gallery h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 42px;
+    text-align: center;
+    margin-bottom: 10px;
+    color: var(--black);
+}
+
+.gallery-subtitle {
+    text-align: center;
+    color: var(--black);
+    margin-bottom: 50px;
+    font-size: 16px;
+    opacity: 0.8;
+}
+
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+}
+
+.gallery-item {
+    overflow: hidden;
+    border-radius: 8px;
+    aspect-ratio: 3/4;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.gallery-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--sage) 0%, var(--olive-green) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ivory);
+    font-weight: 700;
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    transition: transform 0.3s;
+}
+
+.gallery-item:hover .gallery-placeholder {
+    transform: scale(1.05);
+}
+
+/* About Section */
+.about {
+    padding: 80px 20px;
+    background-color: var(--ivory);
+}
+
+.about h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 42px;
+    margin-bottom: 30px;
+    color: var(--black);
+}
+
+.about-content p {
+    font-size: 16px;
+    margin-bottom: 25px;
+    color: var(--black);
+    line-height: 1.8;
+    opacity: 0.9;
+}
+
+.about-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 30px;
+    margin-top: 40px;
+}
+
+.feature {
+    background-color: #fff;
+    padding: 25px;
+    border-radius: 8px;
+    text-align: center;
+    border-top: 3px solid var(--olive-green);
+}
+
+.feature h4 {
+    color: var(--olive-green);
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+.feature p {
+    color: var(--black);
+    font-size: 14px;
+    opacity: 0.85;
+}
+
+/* Contact Section */
+.contact {
+    padding: 80px 20px;
+    background-color: var(--sage);
+    color: var(--black);
+}
+
+.contact h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 42px;
+    text-align: center;
+    margin-bottom: 15px;
+    color: var(--black);
+}
+
+.contact > .container > p {
+    text-align: center;
+    margin-bottom: 40px;
+    color: var(--black);
+    font-size: 16px;
+    opacity: 0.9;
+}
+
+.contact-form {
+    max-width: 600px;
+    margin: 0 auto 50px;
+    display: grid;
+    gap: 15px;
+}
+
+.contact-form input,
+.contact-form textarea {
+    padding: 15px;
+    border: none;
+    border-radius: 5px;
+    font-family: 'Lato', sans-serif;
+    font-size: 14px;
+    background-color: rgba(255,255,255,0.95);
+    color: var(--black);
+}
+
+.contact-form input::placeholder,
+.contact-form textarea::placeholder {
+    color: #999;
+}
+
+.contact-form input:focus,
+.contact-form textarea:focus {
+    outline: none;
+    background-color: #fff;
+    box-shadow: 0 0 0 2px var(--olive-green);
+}
+
+.submit-btn {
+    background-color: var(--gold);
+    color: var(--black);
+    padding: 15px;
+    border: none;
+    border-radius: 5px;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s;
+}
+
+.submit-btn:hover {
+    background-color: var(--olive-green);
+    color: var(--ivory);
+    transform: scale(1.02);
+}
+
+.contact-info {
+    text-align: center;
+    color: var(--black);
+    max-width: 600px;
+    margin: 0 auto;
+    opacity: 0.9;
+}
+
+.contact-info p {
+    margin-bottom: 15px;
+    font-size: 16px;
+}
+
+/* Footer */
+footer {
+    background-color: var(--olive-green);
+    color: var(--ivory);
+    padding: 30px 20px;
+    text-align: center;
+}
+
+footer .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.social-links {
+    display: flex;
+    gap: 20px;
+}
+
+.social-icon {
+    color: var(--ivory);
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.social-icon:hover {
+    color: var(--gold);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .navbar .container {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .nav-links {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+
+    .hero-content h2 {
+        font-size: 36px;
+    }
+
+    .hero {
+        min-height: 400px;
+        padding: 60px 20px;
+    }
+
+    .services h2,
+    .gallery h2,
+    .about h2,
+    .contact h2 {
+        font-size: 32px;
+    }
+
+    .services-grid,
+    .gallery-grid,
+    .about-features {
+        grid-template-columns: 1fr;
+    }
+
+    footer .container {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 480px) {
+    .nav-brand h1 {
+        font-size: 20px;
+    }
+
+    .hero-content h2 {
+        font-size: 28px;
+    }
+
+    .hero-content p {
+        font-size: 16px;
+    }
+
+    .cta-button {
+        padding: 12px 30px;
+        font-size: 14px;
+    }
+}
