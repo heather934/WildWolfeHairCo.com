@@ -74,6 +74,14 @@ Edit footer social links:
 <a href="https://instagram.com/zoee" class="social-icon">Instagram</a>
 ```
 
+## Booking Email Notifications
+
+Booking confirmations are sent through a Cloudflare Worker (`cloudflare-worker.js`) that relays emails via MailChannels, since GitHub Pages/static hosting can't send email directly.
+
+1. Deploy `cloudflare-worker.js` as a Cloudflare Worker (see the setup instructions in the file's header comment) and name it `send-booking-email`.
+2. Copy the deployed Worker URL (e.g. `https://send-booking-email.yourusername.workers.dev`).
+3. Update `this.workerUrl` in `calendar-script.js` with that URL.
+
 ## Performance
 
 - Optimized for fast loading
