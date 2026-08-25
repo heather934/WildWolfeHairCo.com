@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zoee Admin Panel - Content Management</title>
+    <link rel="stylesheet" href="admin-styles.css">
+    <link rel="stylesheet" href="admin-calendar-styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Admin Sidebar -->
+    <aside class="sidebar">
+        <div class="logo">
+            <h2>Zoee Admin</h2>
+        </div>
+        <nav class="admin-nav">
+            <ul>
+                <li><a href="#dashboard" class="nav-link active" data-section="dashboard">📊 Dashboard</a></li>
+                <li><a href="#calendar" class="nav-link" data-section="calendar">📅 Calendar & Booking</a></li>
+                <li><a href="#services" class="nav-link" data-section="services">🎯 Services</a></li>
+                <li><a href="#gallery" class="nav-link" data-section="gallery">🖼️ Gallery</a></li>
+                <li><a href="#about" class="nav-link" data-section="about">ℹ️ About</a></li>
+                <li><a href="#contact" class="nav-link" data-section="contact">📧 Contact Info</a></li>
+                <li><a href="#messages" class="nav-link" data-section="messages">💬 Messages</a></li>
+                <li><a href="#notifications" class="nav-link" data-section="notifications">📱 SMS Notifications</a></li>
+            </ul>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="../index.html" class="view-site-btn">👁️ View Site</a>
+            <button class="logout-btn" id="logoutBtn">🚪 Logout</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="admin-container">
+        <header class="admin-header">
+            <h1>Zoee's Content Management System</h1>
+            <div class="admin-info">
+                <span id="currentTime"></span>
+                <span class="user-status">● Online</span>
+            </div>
+        </header>
+
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="content-section active">
+            <div class="section-header">
+                <h2>Dashboard</h2>
+                <p>Welcome to your admin panel! Manage all your content here.</p>
+            </div>
+            <div class="dashboard-grid">
+                <div class="stat-card">
+                    <h3>Total Gallery Images</h3>
+                    <p class="stat-number" id="totalImages">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Services Listed</h3>
+                    <p class="stat-number" id="totalServices">6</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Unread Messages</h3>
+                    <p class="stat-number" id="unreadMessages">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Booked Dates</h3>
+                    <p class="stat-number" id="bookedDatesCount">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Blocked Dates</h3>
+                    <p class="stat-number" id="blockedDatesCount">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Last Updated</h3>
+                    <p class="stat-text" id="lastUpdated">Never</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Calendar & Booking Section -->
+        <section id="calendar" class="content-section">
+            <div class="section-header">
+                <h2>Calendar Management</h2>
+                <p>Manage your availability and view bookings</p>
+            </div>
+
+            <!-- Admin Calendar -->
+            <div class="admin-calendar-section">
+                <div class="section-header">
+                    <h3>Your Calendar</h3>
+                    <button class="btn-primary" id="addBlockedDateBtn">🔒 Block Date</button>
+                </div>
+
+                <div class="admin-calendar-legend">
+                    <div class="admin-legend-item">
+                        <span class="admin-legend-color available"></span> Available
+                    </div>
+                    <div class="admin-legend-item">
+                        <span class="admin-legend-color booked"></span> Booked
+                    </div>
+                    <div class="admin-legend-item">
+                        <span class="admin-legend-color blocked"></span> Blocked
+                    </div>
+                </div>
+
+                <div class="admin-calendar-header">
+                    <button class="calendar-nav prev" id="prevAdminMonth">❮</button>
+                    <h4 id="adminCurrentMonth"></h4>
+                    <button class="calendar-nav next" id="nextAdminMonth">❯</button>
+                </div>
+
+                <div class="admin-calendar-grid" id="adminCalendarGrid"></div>
+
+                <!-- Block Date Form -->
+                <div class="block-date-form" id="blockDateForm" style="display: none;">
+                    <h4>Block Date</h4>
+                    <form>
+                        <div class="block-form-group">
+                            <div>
+                                <label for="blockDate">Date:</label>
+                                <input type="date" id="blockDate" required>
+                            </div>
+                            <div>
+                                <label for="blockReason">Reason (optional):</label>
+                                <input type="text" id="blockReason" placeholder="e.g., Personal, Travel, etc.">
+                            </div>
+                            <div class="block-form-actions">
+                                <button type="submit" class="btn-success">Block Date</button>
+                                <button type="button" class="btn-secondary" id="cancelBlockBtn">Cancel</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Booking Information -->
+            <div class="admin-calendar-section">
+                <div class="section-header">
+                    <h3>Bookings Overview</h3>
+                </div>
+                <div id="bookingsOverview">
+                    <p>No bookings yet. Bookings will appear here as clients submit them.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Services Section -->
+        <section id="services" class="content-section">
+            <div class="section-header">
+                <h2>Manage Services</h2>
+                <button class="btn-primary" id="addServiceBtn">+ Add Service</button>
+            </div>
+            
+            <div id="servicesContainer" class="services-container">
+                <!-- Services will be loaded here -->
+            </div>
+        </section>
+
+        <!-- Gallery Section -->
+        <section id="gallery" class="content-section">
+            <div class="section-header">
+                <h2>Manage Gallery</h2>
+                <button class="btn-primary" id="addImageBtn">+ Upload Image</button>
+            </div>
+
+            <!-- Image Upload Form -->
+            <div class="upload-form" id="uploadForm" style="display: none;">
+                <div class="form-group">
+                    <label for="imageFile">Select Image:</label>
+                    <input type="file" id="imageFile" accept="image/*" required>
+                    <small>Supported: JPG, PNG, WebP (Max 5MB)</small>
+                </div>
+                <div class="form-group">
+                    <label for="imageCaption">Image Caption:</label>
+                    <input type="text" id="imageCaption" placeholder="e.g., Bridal Look - Elegant Updo" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-success" id="uploadImageBtn">Upload Image</button>
+                    <button type="button" class="btn-secondary" id="cancelUploadBtn">Cancel</button>
+                </div>
+                <div id="uploadProgress" class="progress-bar" style="display: none;">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+            </div>
+
+            <!-- Gallery Grid -->
+            <div id="galleryContainer" class="gallery-container">
+                <!-- Gallery images will be loaded here -->
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section id="about" class="content-section">
+            <div class="section-header">
+                <h2>About Section</h2>
+            </div>
+
+            <div class="edit-form">
+                <div class="form-group">
+                    <label for="aboutTitle">Title:</label>
+                    <input type="text" id="aboutTitle" placeholder="e.g., About Zoee">
+                </div>
+                <div class="form-group">
+                    <label for="aboutParagraph1">Paragraph 1:</label>
+                    <textarea id="aboutParagraph1" rows="4" placeholder="First paragraph about your experience..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="aboutParagraph2">Paragraph 2:</label>
+                    <textarea id="aboutParagraph2" rows="4" placeholder="Second paragraph about your approach..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Features:</label>
+                    <div id="featuresContainer" class="features-list">
+                        <!-- Features will be loaded here -->
+                    </div>
+                    <button type="button" class="btn-secondary" id="addFeatureBtn">+ Add Feature</button>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-success" id="saveAboutBtn">Save Changes</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Contact Info Section -->
+        <section id="contact" class="content-section">
+            <div class="section-header">
+                <h2>Contact Information</h2>
+            </div>
+
+            <div class="edit-form">
+                <div class="form-group">
+                    <label for="contactEmail">Email:</label>
+                    <input type="email" id="contactEmail" placeholder="zoee@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="contactPhone">Phone:</label>
+                    <input type="tel" id="contactPhone" placeholder="(555) 123-4567">
+                </div>
+                <div class="form-group">
+                    <label for="contactLocation">Location:</label>
+                    <input type="text" id="contactLocation" placeholder="Your City, State">
+                </div>
+                <div class="form-group">
+                    <label for="contactMessage">Response Message:</label>
+                    <textarea id="contactMessage" rows="3" placeholder="Thank you message for contact form submissions..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-success" id="saveContactBtn">Save Changes</button>
+                </div>
+            </div>
+
+            <div class="social-media">
+                <h3>Social Media Links</h3>
+                <div class="form-group">
+                    <label for="instagramLink">Instagram:</label>
+                    <input type="url" id="instagramLink" placeholder="https://instagram.com/yourprofile">
+                </div>
+                <div class="form-group">
+                    <label for="facebookLink">Facebook:</label>
+                    <input type="url" id="facebookLink" placeholder="https://facebook.com/yourpage">
+                </div>
+                <div class="form-group">
+                    <label for="pinterestLink">Pinterest:</label>
+                    <input type="url" id="pinterestLink" placeholder="https://pinterest.com/yourprofile">
+                </div>
+                <button type="button" class="btn-success" id="saveSocialBtn">Save Social Links</button>
+            </div>
+        </section>
+
+        <!-- Messages Section -->
+        <section id="messages" class="content-section">
+            <div class="section-header">
+                <h2>Contact Form Messages</h2>
+                <button class="btn-secondary" id="clearMessagesBtn">Clear All</button>
+            </div>
+
+            <div id="messagesContainer" class="messages-container">
+                <p class="empty-state">No messages yet</p>
+            </div>
+        </section>
+
+        <!-- SMS Notifications Section -->
+        <section id="notifications" class="content-section">
+            <div class="section-header">
+                <h2>SMS Notifications Setup</h2>
+            </div>
+
+            <div class="sms-notifications-section">
+                <div class="sms-status">
+                    <div class="sms-status-text" id="smsStatusText">SMS Notifications: Disabled</div>
+                    <div class="sms-toggle">
+                        <label for="enableSMS">Enable SMS:</label>
+                        <input type="checkbox" id="enableSMS">
+                        <button type="button" class="btn-primary" id="saveSMSSettingsBtn">Save</button>
+                    </div>
+                </div>
+
+                <div class="sms-info">
+                    <h4>📬 Email Notifications are Active</h4>
+                    <p>Booking confirmations are automatically sent to:</p>
+                    <ul>
+                        <li>📧 <strong>zoee.burley@yahoo.com</strong></li>
+                        <li>📧 <strong>h.m.ward1846@gmail.com</strong></li>
+                    </ul>
+                    <p>All booking details including client info and selected date are included in the email.</p>
+                </div>
+
+                <div class="sms-info">
+                    <h4>💬 Add SMS Notifications (Optional)</h4>
+                    <p>Get instant text message alerts for new bookings in addition to emails.</p>
+                    <button type="button" class="btn-primary" id="setupSMSBtn">Setup SMS with Twilio</button>
+                </div>
+
+                <div id="smsSetupContainer"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal for editing services -->
+    <div id="serviceModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Edit Service</h2>
+            <form id="serviceForm">
+                <div class="form-group">
+                    <label for="serviceName">Service Name:</label>
+                    <input type="text" id="serviceName" required>
+                </div>
+                <div class="form-group">
+                    <label for="serviceDesc">Description:</label>
+                    <textarea id="serviceDesc" rows="4" required></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-success">Save Service</button>
+                    <button type="button" class="btn-secondary" onclick="closeServiceModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="admin-script.js"></script>
+    <script src="admin-calendar.js"></script>
+    <script src="sms-handler.js"></script>
+</body>
+</html>
