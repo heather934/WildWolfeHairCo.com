@@ -397,10 +397,7 @@ footer .container {
 /* Decorative Floral Elements */
 .hero-arch {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 320px;
+    inset: 0;
     z-index: 1;
     pointer-events: none;
     opacity: 0.9;
@@ -411,17 +408,16 @@ footer .container {
 .hero-arch-top {
     position: absolute;
     top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(900px, 100%);
-    height: auto;
+    left: 0;
+    width: 100%;
+    height: 150px;
 }
 
 .hero-arch-side {
     position: absolute;
     top: 0;
     width: 140px;
-    height: 320px;
+    height: 100%;
 }
 
 .hero-arch-side-left {
@@ -493,16 +489,13 @@ footer .container {
         display: none;
     }
 
-    .hero-arch {
-        height: 190px;
-    }
-
     .hero-arch-side {
         display: none;
     }
 
     .hero-arch-top {
         top: -10px;
+        height: 90px;
     }
 
     .navbar .container {
