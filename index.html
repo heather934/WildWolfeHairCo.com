@@ -59,6 +59,7 @@
                 <li><a href="#home">Home</a></li>
                 <li><a href="#services">Services</a></li>
                 <li><a href="#gallery">Gallery</a></li>
+                <li><a href="#book">Book Now</a></li>
                 <li><a href="#about">About</a></li>
                 <li><a href="#contact">Contact</a></li>
             </ul>
@@ -75,7 +76,7 @@
         <div class="hero-content">
             <h2>Your Perfect Wedding Day Hair</h2>
             <p>Elegant, luxurious bridal hairstyles tailored to you</p>
-            <a href="#contact" class="cta-button">Book Your Consultation</a>
+            <a href="#book" class="cta-button">Book Your Consultation</a>
         </div>
     </section>
 
@@ -154,6 +155,57 @@
         </div>
     </section>
 
+    <!-- Book Now Section -->
+    <section id="book" class="booking">
+        <div class="container">
+            <h2>Book Your Appointment</h2>
+            <p class="booking-subtitle">Select an available date below and share a few details about your big day</p>
+            <div class="booking-layout">
+                <div class="calendar-container">
+                    <div class="calendar-legend">
+                        <span class="legend-item"><span class="legend-swatch available"></span> Available</span>
+                        <span class="legend-item"><span class="legend-swatch booked"></span> Booked</span>
+                    </div>
+                    <div class="calendar-header">
+                        <button type="button" id="prevMonth" class="calendar-nav" aria-label="Previous month">&#10094;</button>
+                        <h3 id="currentMonth"></h3>
+                        <button type="button" id="nextMonth" class="calendar-nav" aria-label="Next month">&#10095;</button>
+                    </div>
+                    <div class="calendar-grid" id="calendarGrid"></div>
+                </div>
+                <form class="booking-form" id="bookingForm">
+                    <label for="selectedDate">Selected Date</label>
+                    <input type="text" id="selectedDate" placeholder="Choose a date from the calendar" readonly required>
+                    <input type="text" id="bookingName" placeholder="Your Name" required>
+                    <input type="email" id="bookingEmail" placeholder="Your Email" required>
+                    <input type="tel" id="bookingPhone" placeholder="Your Phone Number" required>
+                    <select id="bookingService" required>
+                        <option value="" disabled selected>Select a Service</option>
+                        <option value="Bridal Hair Styling">Bridal Hair Styling</option>
+                        <option value="Bridesmaid Styling">Bridesmaid Styling</option>
+                        <option value="Hair Trial">Hair Trial</option>
+                        <option value="Wedding Day Touch-Ups">Wedding Day Touch-Ups</option>
+                        <option value="Special Events">Special Events</option>
+                        <option value="Consultations">Consultations</option>
+                    </select>
+                    <textarea id="bookingMessage" placeholder="Tell me about your vision..." rows="4"></textarea>
+                    <button type="submit" class="btn-submit">Confirm Booking</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Booking Confirmation Modal -->
+    <div id="confirmationModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Booking Request Received!</h2>
+            <p>Thank you! Zoee will reach out to confirm your appointment shortly.</p>
+            <div id="confirmationDetails"></div>
+            <p>A confirmation will be sent to <strong id="confirmEmail"></strong>.</p>
+        </div>
+    </div>
+
     <!-- About Section -->
     <section id="about" class="about">
         <svg class="decor decor-veil decor-about" viewBox="0 0 200 300" aria-hidden="true" focusable="false"><use href="#deco-veil"/></svg>
@@ -215,5 +267,6 @@
     </footer>
 
     <script src="script.js"></script>
+    <script src="calendar-script.js"></script>
 </body>
 </html>
