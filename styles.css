@@ -408,53 +408,28 @@ footer .container {
     will-change: transform, opacity;
 }
 
-.hero-arch-top {
+.hero-border-top {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
-    height: clamp(70px, 22%, 150px);
+    height: 60px;
 }
 
-.hero-arch-side {
+.hero-border-left,
+.hero-border-right {
     position: absolute;
-    top: 0;
-    width: clamp(50px, 10%, 140px);
-    height: 100%;
+    top: 60px;
+    width: 60px;
+    height: calc(100% - 60px);
 }
 
-.hero-arch-side-left {
+.hero-border-left {
     left: 0;
 }
 
-.hero-arch-side-right {
+.hero-border-right {
     right: 0;
-    transform: scaleX(-1);
-}
-
-.hero-arch-corner-tl {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: clamp(100px, 20%, 200px);
-    height: clamp(75px, 15%, 150px);
-}
-
-.hero-arch-left-top {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: clamp(70px, 22%, 150px);
-    height: 100%;
-    overflow: hidden;
-}
-
-.hero-arch-left-top svg {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    height: clamp(70px, 22%, 150px);
-    transform: translate(-50%, -50%) rotate(90deg) scaleX(-1);
 }
 
 .decor {
