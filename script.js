@@ -150,4 +150,31 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
+// Floral lattice at the top of the hero drifts down and fades as you scroll past it
+const floralLattice = document.querySelector('.floral-lattice-top');
+
+if (floralLattice) {
+    const heroSection = document.querySelector('.hero');
+    let latticeTicking = false;
+
+    const updateFloralLattice = () => {
+        const heroHeight = heroSection ? heroSection.offsetHeight : 600;
+        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+        const progress = Math.min(scrollY / heroHeight, 1);
+
+        floralLattice.style.transform = `translateY(${scrollY * 0.4}px)`;
+        floralLattice.style.opacity = String(0.85 * (1 - progress));
+        latticeTicking = false;
+    };
+
+    window.addEventListener('scroll', () => {
+        if (!latticeTicking) {
+            requestAnimationFrame(updateFloralLattice);
+            latticeTicking = true;
+        }
+    }, { passive: true });
+
+    updateFloralLattice();
+}
+
 console.log('Zoee\'s Bridal Hair Styling website loaded successfully!');
