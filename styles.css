@@ -395,16 +395,42 @@ footer .container {
 }
 
 /* Decorative Floral Elements */
-.floral-lattice-top {
+.hero-arch {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
-    height: 220px;
+    height: 320px;
     z-index: 1;
     pointer-events: none;
-    opacity: 0.85;
+    opacity: 0.9;
+    overflow: hidden;
     will-change: transform, opacity;
+}
+
+.hero-arch-top {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(900px, 100%);
+    height: auto;
+}
+
+.hero-arch-side {
+    position: absolute;
+    top: 0;
+    width: 140px;
+    height: 320px;
+}
+
+.hero-arch-side-left {
+    left: 0;
+}
+
+.hero-arch-side-right {
+    right: 0;
+    transform: scaleX(-1);
 }
 
 .decor {
@@ -467,8 +493,16 @@ footer .container {
         display: none;
     }
 
-    .floral-lattice-top {
-        height: 140px;
+    .hero-arch {
+        height: 190px;
+    }
+
+    .hero-arch-side {
+        display: none;
+    }
+
+    .hero-arch-top {
+        top: -10px;
     }
 
     .navbar .container {

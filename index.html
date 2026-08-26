@@ -42,12 +42,51 @@
                 <g transform="translate(122,118) scale(0.9)"><use href="#deco-flower"/></g>
             </symbol>
 
-            <pattern id="latticePattern" width="130" height="150" patternUnits="userSpaceOnUse">
-                <path d="M0,0 L65,65 L130,0 M0,150 L65,65" fill="none" stroke="#ffffff" stroke-width="1.4" stroke-opacity="0.5"/>
-                <g transform="translate(65,65) scale(1.15)"><use href="#deco-flower"/></g>
-                <g transform="translate(0,0) scale(0.65)"><use href="#deco-flower"/></g>
-                <g transform="translate(130,0) scale(0.65)"><use href="#deco-flower"/></g>
-            </pattern>
+            <symbol id="deco-leaf" viewBox="-10 -4 20 8">
+                <path d="M -10 0 Q -3 -6 10 0 Q -3 6 -10 0 Z" fill="#6b7e5b" opacity="0.55"/>
+            </symbol>
+
+            <symbol id="deco-arch-top" viewBox="0 0 900 170">
+                <path d="M450,60 C300,90 150,70 40,140" fill="none" stroke="#6b7e5b" stroke-width="2" stroke-opacity="0.35"/>
+                <path d="M450,60 C600,90 750,70 860,140" fill="none" stroke="#6b7e5b" stroke-width="2" stroke-opacity="0.35"/>
+
+                <g transform="translate(160,95) rotate(-15) scale(1.3)"><use href="#deco-leaf"/></g>
+                <g transform="translate(230,78) rotate(5) scale(1.1)"><use href="#deco-leaf"/></g>
+                <g transform="translate(320,65) rotate(-10) scale(1.2)"><use href="#deco-leaf"/></g>
+                <g transform="translate(90,120) rotate(-20) scale(1.1)"><use href="#deco-leaf"/></g>
+                <g transform="translate(740,95) rotate(15) scale(1.3)"><use href="#deco-leaf"/></g>
+                <g transform="translate(670,78) rotate(-5) scale(1.1)"><use href="#deco-leaf"/></g>
+                <g transform="translate(580,65) rotate(10) scale(1.2)"><use href="#deco-leaf"/></g>
+                <g transform="translate(810,120) rotate(20) scale(1.1)"><use href="#deco-leaf"/></g>
+
+                <g transform="translate(400,45) scale(1.6)"><use href="#deco-flower"/></g>
+                <g transform="translate(450,30) scale(1.9)"><use href="#deco-flower"/></g>
+                <g transform="translate(500,45) scale(1.6)"><use href="#deco-flower"/></g>
+                <g transform="translate(425,60) scale(1.3)"><use href="#deco-flower"/></g>
+                <g transform="translate(475,60) scale(1.3)"><use href="#deco-flower"/></g>
+                <g transform="translate(370,55) scale(1.2)"><use href="#deco-flower"/></g>
+                <g transform="translate(530,55) scale(1.2)"><use href="#deco-flower"/></g>
+
+                <g transform="translate(300,72) scale(0.9)"><use href="#deco-flower"/></g>
+                <g transform="translate(230,90) scale(0.8)"><use href="#deco-flower"/></g>
+                <g transform="translate(160,110) scale(0.7)"><use href="#deco-flower"/></g>
+                <g transform="translate(600,72) scale(0.9)"><use href="#deco-flower"/></g>
+                <g transform="translate(670,90) scale(0.8)"><use href="#deco-flower"/></g>
+                <g transform="translate(740,110) scale(0.7)"><use href="#deco-flower"/></g>
+            </symbol>
+
+            <symbol id="deco-arch-side" viewBox="0 0 140 320">
+                <path d="M20,0 C10,60 40,90 25,150 C10,210 45,240 30,300"
+                      fill="none" stroke="#ffffff" stroke-width="26" stroke-opacity="0.14" stroke-linecap="round"/>
+                <path d="M15,0 C5,70 35,100 18,170 C4,230 38,260 22,320"
+                      fill="none" stroke="#6b7e5b" stroke-width="2" stroke-opacity="0.35"/>
+                <g transform="translate(15,5) rotate(-20) scale(1.1)"><use href="#deco-leaf"/></g>
+                <g transform="translate(30,40) rotate(15) scale(0.9)"><use href="#deco-leaf"/></g>
+                <g transform="translate(15,80) rotate(-10) scale(1)"><use href="#deco-leaf"/></g>
+                <g transform="translate(25,60) scale(1.1)"><use href="#deco-flower"/></g>
+                <g transform="translate(10,110) scale(0.9)"><use href="#deco-flower"/></g>
+                <g transform="translate(28,140) scale(0.7)"><use href="#deco-flower"/></g>
+            </symbol>
         </defs>
     </svg>
 
@@ -70,9 +109,11 @@
 
     <!-- Hero Section -->
     <section id="home" class="hero">
-        <svg class="floral-lattice-top" viewBox="0 0 800 220" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-            <rect width="800" height="220" fill="url(#latticePattern)"/>
-        </svg>
+        <div class="hero-arch" aria-hidden="true">
+            <svg class="hero-arch-top" viewBox="0 0 900 170" preserveAspectRatio="xMidYMin meet" focusable="false"><use href="#deco-arch-top"/></svg>
+            <svg class="hero-arch-side hero-arch-side-left" viewBox="0 0 140 320" focusable="false"><use href="#deco-arch-side"/></svg>
+            <svg class="hero-arch-side hero-arch-side-right" viewBox="0 0 140 320" focusable="false"><use href="#deco-arch-side"/></svg>
+        </div>
         <div class="hero-content">
             <h2>Your Perfect Wedding Day Hair</h2>
             <p>Elegant, luxurious bridal hairstyles tailored to you</p>
