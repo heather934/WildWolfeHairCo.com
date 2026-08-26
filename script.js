@@ -177,4 +177,21 @@ if (heroArch) {
     updateHeroArch();
 }
 
+// Size the rotated left-side duplicate of the top swag to exactly fill the hero's height
+const heroArchLeftTopSvg = document.querySelector('.hero-arch-left-top svg');
+
+if (heroArchLeftTopSvg) {
+    const heroSection = document.querySelector('.hero');
+
+    const sizeHeroArchLeftTop = () => {
+        if (heroSection) {
+            heroArchLeftTopSvg.style.width = `${heroSection.offsetHeight}px`;
+        }
+    };
+
+    window.addEventListener('resize', sizeHeroArchLeftTop, { passive: true });
+    window.addEventListener('load', sizeHeroArchLeftTop);
+    sizeHeroArchLeftTop();
+}
+
 console.log('Zoee\'s Bridal Hair Styling website loaded successfully!');

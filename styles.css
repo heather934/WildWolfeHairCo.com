@@ -432,6 +432,23 @@ footer .container {
     transform: scaleX(-1);
 }
 
+.hero-arch-left-top {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: clamp(70px, 22%, 150px);
+    height: 100%;
+    overflow: hidden;
+}
+
+.hero-arch-left-top svg {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    height: clamp(70px, 22%, 150px);
+    transform: translate(-50%, -50%) rotate(90deg) scaleX(-1);
+}
+
 .decor {
     position: absolute;
     pointer-events: none;
