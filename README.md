@@ -74,13 +74,19 @@ Edit footer social links:
 <a href="https://instagram.com/zoee" class="social-icon">Instagram</a>
 ```
 
-## Booking Email Notifications
+## Booking & Availability
 
-Booking confirmations are sent through a Cloudflare Worker (`cloudflare-worker.js`) that relays emails via MailChannels, since GitHub Pages/static hosting can't send email directly.
+The "Book Now" section on the homepage (`calendar-script.js`) and the admin panel's calendar (`admin-calendar.js`) both talk to the same Cloudflare Worker (`cloudflare-worker.js`), deployed as `send-booking-email` at `https://send-booking-email.h-m-ward1846.workers.dev`. The Worker is backed by a Cloudflare KV namespace (`AVAILABILITY`) that is the single shared source of truth for booked and blocked dates, so:
 
-1. Deploy `cloudflare-worker.js` as a Cloudflare Worker (see the setup instructions in the file's header comment) and name it `send-booking-email`.
-2. Copy the deployed Worker URL (e.g. `https://send-booking-email.yourusername.workers.dev`).
-3. Update `this.workerUrl` in `calendar-script.js` with that URL.
+- A date a client books on the public calendar immediately shows as booked in the admin panel.
+- A date Zoee blocks (or a booking she removes) in the admin panel immediately becomes unavailable/available again on the public calendar.
+
+The Worker also sends the booking notification email via MailChannels once a booking is saved.
+
+**Security note:** the admin endpoints (`POST/DELETE /availability/block`, `DELETE /availability/book`) are not currently authenticated — anyone who knows the Worker URL could call them directly, and `admin.html` itself has no login. Before relying on this for a real business, add real authentication (a Cloudflare Access gate in front of `admin.html`, and a matching check in the Worker for the mutating endpoints).
+
+### Redeploying the Worker
+If you change `cloudflare-worker.js`, redeploy it to Cloudflare (Workers & Pages > `send-booking-email` > upload the updated script) so the live Worker matches the repo. The KV binding (`AVAILABILITY`) must stay attached across redeploys.
 
 ## Performance
 

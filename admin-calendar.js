@@ -4,9 +4,16 @@ class AdminCalendarManager {
         this.blockedDates = [];
         this.bookedDates = [];
         this.currentDate = new Date();
-        
+        // Same Worker + KV namespace the public booking calendar reads from,
+        // so blocking/unblocking dates here actually affects what clients see.
+        this.workerUrl = 'https://send-booking-email.h-m-ward1846.workers.dev';
+
         this.initializeEventListeners();
-        this.loadData();
+        this.init();
+    }
+
+    async init() {
+        await this.loadData();
         this.renderAdminCalendar();
     }
 
@@ -23,7 +30,7 @@ class AdminCalendarManager {
     renderAdminCalendar() {
         const year = this.currentDate.getFullYear();
         const month = this.currentDate.getMonth();
-        
+
         // Update header
         const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
                           'July', 'August', 'September', 'October', 'November', 'December'];
@@ -59,7 +66,7 @@ class AdminCalendarManager {
             const day = document.createElement('div');
             const dateObj = new Date(year, month, i);
             const dateString = this.formatDate(dateObj);
-            
+
             day.className = 'admin-calendar-day';
             day.textContent = i;
 
@@ -106,6 +113,11 @@ class AdminCalendarManager {
             day.textContent = i;
             grid.appendChild(day);
         }
+
+        const countEl = document.getElementById('bookedDatesCount');
+        if (countEl) {
+            countEl.textContent = this.bookedDates.length;
+        }
     }
 
     toggleBlockDateForm() {
@@ -118,7 +130,7 @@ class AdminCalendarManager {
         this.toggleBlockDateForm();
     }
 
-    blockDate(e) {
+    async blockDate(e) {
         e.preventDefault();
         const dateString = document.getElementById('blockDate').value;
         const reason = document.getElementById('blockReason').value;
@@ -131,31 +143,73 @@ class AdminCalendarManager {
         const date = new Date(dateString);
         const formattedDate = this.formatDate(date);
 
-        if (!this.blockedDates.includes(formattedDate)) {
-            this.blockedDates.push(formattedDate);
-            this.saveData();
+        try {
+            const response = await fetch(`${this.workerUrl}/availability/block`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date: formattedDate, reason }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Worker returned ${response.status}`);
+            }
+
+            if (!this.blockedDates.includes(formattedDate)) {
+                this.blockedDates.push(formattedDate);
+            }
             this.renderAdminCalendar();
             document.getElementById('blockDateForm').reset();
             this.toggleBlockDateForm();
             this.showNotification('Date blocked successfully!', 'success');
+        } catch (error) {
+            console.error('Failed to block date:', error);
+            this.showNotification('Failed to block date. Please try again.', 'error');
         }
     }
 
-    removeBlocked(dateString) {
-        if (confirm('Remove this blocked date?')) {
+    async removeBlocked(dateString) {
+        if (!confirm('Remove this blocked date?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${this.workerUrl}/availability/block?date=${encodeURIComponent(dateString)}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                throw new Error(`Worker returned ${response.status}`);
+            }
+
             this.blockedDates = this.blockedDates.filter(d => d !== dateString);
-            this.saveData();
             this.renderAdminCalendar();
             this.showNotification('Blocked date removed!', 'success');
+        } catch (error) {
+            console.error('Failed to remove blocked date:', error);
+            this.showNotification('Failed to remove blocked date. Please try again.', 'error');
         }
     }
 
-    removeBooking(dateString) {
-        if (confirm('Remove this booking? This will notify the client.')) {
+    async removeBooking(dateString) {
+        if (!confirm('Remove this booking? This will notify the client.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${this.workerUrl}/availability/book?date=${encodeURIComponent(dateString)}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                throw new Error(`Worker returned ${response.status}`);
+            }
+
             this.bookedDates = this.bookedDates.filter(d => d !== dateString);
-            this.saveData();
             this.renderAdminCalendar();
             this.showNotification('Booking removed!', 'success');
+        } catch (error) {
+            console.error('Failed to remove booking:', error);
+            this.showNotification('Failed to remove booking. Please try again.', 'error');
         }
     }
 
@@ -248,16 +302,19 @@ class AdminCalendarManager {
         this.showNotification('SMS settings updated!', 'success');
     }
 
-    saveData() {
-        localStorage.setItem('adminBlockedDates', JSON.stringify(this.blockedDates));
-        localStorage.setItem('adminBookedDates', JSON.stringify(this.bookedDates));
-    }
-
-    loadData() {
-        const blocked = localStorage.getItem('adminBlockedDates');
-        const booked = localStorage.getItem('adminBookedDates');
-        if (blocked) this.blockedDates = JSON.parse(blocked);
-        if (booked) this.bookedDates = JSON.parse(booked);
+    async loadData() {
+        try {
+            const response = await fetch(`${this.workerUrl}/availability`);
+            if (!response.ok) {
+                throw new Error(`Worker returned ${response.status}`);
+            }
+            const data = await response.json();
+            this.bookedDates = data.bookedDates || [];
+            this.blockedDates = data.blockedDates || [];
+        } catch (error) {
+            console.error('Failed to load availability:', error);
+            this.showNotification('Failed to load availability from the server.', 'error');
+        }
     }
 
     showNotification(message, type) {
