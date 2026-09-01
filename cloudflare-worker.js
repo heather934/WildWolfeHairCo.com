@@ -392,7 +392,7 @@ function buildBookingEmailHTML(bookingData) {
         ` : ''}
 
         <div style="text-align: center;">
-            <a href="https://wildwolfehairco-com.pages.dev/admin.html" class="action-button">View in Admin Panel</a>
+            <a href="https://wildwolfehairco.com/admin.html" class="action-button">View in Admin Panel</a>
         </div>
 
         <div class="footer">

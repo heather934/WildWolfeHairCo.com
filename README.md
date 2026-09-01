@@ -88,10 +88,12 @@ If you change `cloudflare-worker.js`, redeploy it to Cloudflare (Workers & Pages
 
 ## Admin Login (Cloudflare Access)
 
-`admin.html` and everything under `/api/admin/*` are gated by Cloudflare Access with a passwordless, one-time email code — no username/password to manage. Only `zoee.burley@yahoo.com` and `h.m.ward1846@gmail.com` are allowed in; visiting `/admin.html` (or any `*.wildwolfehairco-com.pages.dev` preview URL) prompts for one of those emails and a 6-digit code sent to it.
+`admin.html` and everything under `/api/admin/*` are gated by Cloudflare Access with a passwordless, one-time email code — no username/password to manage. Only `zoee.burley@yahoo.com` and `h.m.ward1846@gmail.com` are allowed in; visiting `https://wildwolfehairco.com/admin.html` prompts for one of those emails and a 6-digit code sent to it.
+
+The site previously only existed at the bare `wildwolfehairco-com.pages.dev` URL, which turned out to matter: Cloudflare Access's hostname-based protection doesn't reliably enforce on Cloudflare's own shared `.pages.dev`/`.workers.dev` domains (only on a zone you actually control). `wildwolfehairco.com` was already a registered, unused zone on the account, so it's now connected as this Pages project's custom domain and is the real, working entry point — `wildwolfehairco-com.pages.dev` still resolves too (Cloudflare Pages always keeps that alias live), but should be treated as a fallback rather than the site's real address; link to `wildwolfehairco.com` going forward.
 
 **Two independent layers**, both required:
-1. **Cloudflare Access** (the login prompt itself) — an app named "Wild Wolfe Hair Co — Admin" in the Zero Trust dashboard, covering `wildwolfehairco-com.pages.dev/admin*`, `/api/admin*`, and the whole `*.wildwolfehairco-com.pages.dev` preview/branch family (so a stale preview link can't be used to bypass the login).
+1. **Cloudflare Access** (the login prompt itself) — an app named "Wild Wolfe Hair Co — Admin" in the Zero Trust dashboard, covering `wildwolfehairco.com/admin*`, `wildwolfehairco.com/api/admin*`, and (best-effort only, per the limitation above) the `*.wildwolfehairco-com.pages.dev` preview/branch family.
 2. **`functions/api/admin/_middleware.js`** — independently re-verifies the signed Access token on every request to `/api/admin/*` (the admin block/unblock/remove-booking endpoints), so those routes stay protected even if the Access app is ever accidentally misconfigured or removed.
 
 Blocking/unblocking dates and removing bookings now go through this site's own `/api/admin/*` routes (Pages Functions, using the same `AVAILABILITY` KV namespace as the public Worker) instead of calling the public Worker directly, since that's what Access actually protects. Reading availability (`GET /availability`, used by both the admin panel and the public calendar) stays on the public Worker — that data isn't sensitive.
