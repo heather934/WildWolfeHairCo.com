@@ -4,8 +4,10 @@ class AdminCalendarManager {
         this.blockedDates = [];
         this.bookedDates = [];
         this.currentDate = new Date();
-        // Same Worker + KV namespace the public booking calendar reads from,
-        // so blocking/unblocking dates here actually affects what clients see.
+        // Reads share the same Worker + KV namespace the public booking
+        // calendar reads from. Mutations (block/unblock/remove booking) go
+        // through this site's own /api/admin/* routes instead, which are
+        // gated by Cloudflare Access + a same-origin check.
         this.workerUrl = 'https://send-booking-email.h-m-ward1846.workers.dev';
 
         this.initializeEventListeners();
@@ -144,14 +146,14 @@ class AdminCalendarManager {
         const formattedDate = this.formatDate(date);
 
         try {
-            const response = await fetch(`${this.workerUrl}/availability/block`, {
+            const response = await fetch('/api/admin/block', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ date: formattedDate, reason }),
             });
 
             if (!response.ok) {
-                throw new Error(`Worker returned ${response.status}`);
+                throw new Error(`Server returned ${response.status}`);
             }
 
             if (!this.blockedDates.includes(formattedDate)) {
@@ -173,12 +175,12 @@ class AdminCalendarManager {
         }
 
         try {
-            const response = await fetch(`${this.workerUrl}/availability/block?date=${encodeURIComponent(dateString)}`, {
+            const response = await fetch(`/api/admin/block?date=${encodeURIComponent(dateString)}`, {
                 method: 'DELETE',
             });
 
             if (!response.ok) {
-                throw new Error(`Worker returned ${response.status}`);
+                throw new Error(`Server returned ${response.status}`);
             }
 
             this.blockedDates = this.blockedDates.filter(d => d !== dateString);
@@ -196,12 +198,12 @@ class AdminCalendarManager {
         }
 
         try {
-            const response = await fetch(`${this.workerUrl}/availability/book?date=${encodeURIComponent(dateString)}`, {
+            const response = await fetch(`/api/admin/booking?date=${encodeURIComponent(dateString)}`, {
                 method: 'DELETE',
             });
 
             if (!response.ok) {
-                throw new Error(`Worker returned ${response.status}`);
+                throw new Error(`Server returned ${response.status}`);
             }
 
             this.bookedDates = this.bookedDates.filter(d => d !== dateString);

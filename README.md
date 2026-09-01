@@ -83,10 +83,20 @@ The "Book Now" section on the homepage (`calendar-script.js`) and the admin pane
 
 The Worker also sends the booking notification email via MailChannels once a booking is saved.
 
-**Security note:** the admin endpoints (`POST/DELETE /availability/block`, `DELETE /availability/book`) are not currently authenticated — anyone who knows the Worker URL could call them directly, and `admin.html` itself has no login. Before relying on this for a real business, add real authentication (a Cloudflare Access gate in front of `admin.html`, and a matching check in the Worker for the mutating endpoints).
-
 ### Redeploying the Worker
 If you change `cloudflare-worker.js`, redeploy it to Cloudflare (Workers & Pages > `send-booking-email` > upload the updated script) so the live Worker matches the repo. The KV binding (`AVAILABILITY`) must stay attached across redeploys.
+
+## Admin Login (Cloudflare Access)
+
+`admin.html` and everything under `/api/admin/*` are gated by Cloudflare Access with a passwordless, one-time email code — no username/password to manage. Only `zoee.burley@yahoo.com` and `h.m.ward1846@gmail.com` are allowed in; visiting `/admin.html` (or any `*.wildwolfehairco-com.pages.dev` preview URL) prompts for one of those emails and a 6-digit code sent to it.
+
+**Two independent layers**, both required:
+1. **Cloudflare Access** (the login prompt itself) — an app named "Wild Wolfe Hair Co — Admin" in the Zero Trust dashboard, covering `wildwolfehairco-com.pages.dev/admin*`, `/api/admin*`, and the whole `*.wildwolfehairco-com.pages.dev` preview/branch family (so a stale preview link can't be used to bypass the login).
+2. **`functions/api/admin/_middleware.js`** — independently re-verifies the signed Access token on every request to `/api/admin/*` (the admin block/unblock/remove-booking endpoints), so those routes stay protected even if the Access app is ever accidentally misconfigured or removed.
+
+Blocking/unblocking dates and removing bookings now go through this site's own `/api/admin/*` routes (Pages Functions, using the same `AVAILABILITY` KV namespace as the public Worker) instead of calling the public Worker directly, since that's what Access actually protects. Reading availability (`GET /availability`, used by both the admin panel and the public calendar) stays on the public Worker — that data isn't sensitive.
+
+**Adding or removing an admin:** update both the Access app's policy (Zero Trust dashboard > Access > Applications > "Wild Wolfe Hair Co — Admin") and the `ADMIN_EMAIL` environment variable on the Pages project (Workers & Pages > `wildwolfehairco-com` > Settings > Environment variables, both Production and Preview) — they're checked independently by design, so both need to change together.
 
 ## Performance
 
