@@ -17,25 +17,48 @@
  * 6. Click "Deploy"
  * 7. Copy the Worker URL (format: https://send-booking-email.yourusername.workers.dev)
  *
- * API:
- *   GET    /availability        -> { bookedDates: string[], blockedDates: string[] }
- *   POST   /availability/book   -> body: { date, name, email, phone, service, message }
- *   DELETE /availability/book?date=YYYY-MM-DD
- *   POST   /availability/block  -> body: { date, reason }
- *   DELETE /availability/block?date=YYYY-MM-DD
- *   POST   /messages            -> body: { name, email, phone, weddingDate, message } (public contact form)
- *   POST   /                    -> legacy generic email send: { to, subject, html, text?, from? }
+ * API (all public, unauthenticated - keep it that way only for read-only or
+ * additive operations a site visitor is meant to be able to do):
+ *   GET  /availability   -> { bookedDates: string[], blockedDates: string[] }
+ *   POST /availability/book -> body: { date, name, email, phone, service, message }
+ *   POST /messages           -> body: { name, email, phone, weddingDate, message } (public contact form)
  *
  * Full booking details (name/email/phone/message) and contact form messages
  * are written to KV too, but are only ever read back through this site's own
  * Access-protected /api/admin/* routes (see functions/api/admin/) - never
  * through this worker directly, since that data is not meant to be public.
+ *
+ * Deliberately NOT here: unblocking/blocking dates, removing a booking, or a
+ * generic "send any email" relay. Those are destructive/abusable and require
+ * a login, so they live exclusively in functions/api/admin/ (Cloudflare
+ * Access + independent JWT verification) instead of this worker. Do not add
+ * them back here without auth - this worker's URL is public (it's in the
+ * site's own client-side JS), so anything unauthenticated here is reachable
+ * by anyone who finds it, not just this site's visitors.
+ *
+ * Both POST routes require a Cloudflare Turnstile token (body field
+ * `turnstileToken`, verified server-side against the `TURNSTILE_SECRET_KEY`
+ * secret) and are additionally rate-limited per IP via the AVAILABILITY KV
+ * namespace, to keep them from being scripted/spammed.
  */
 
 const ADMIN_EMAILS = [
   { email: 'zoee.burley@yahoo.com', name: 'Zoee Burley' },
   { email: 'h.m.ward1846@gmail.com', name: 'Admin' },
 ];
+
+// Booking/message fields come straight from site visitors and get
+// interpolated into HTML email bodies below - escape them so a name or
+// message like `<img src=x onerror=...>` can't inject markup into the
+// notification email.
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 export default {
   async fetch(request, env) {
@@ -59,40 +82,14 @@ export default {
 
       if (url.pathname === '/availability/book' && request.method === 'POST') {
         const data = await request.json();
-        return await handleBookDate(data, env, corsHeaders);
-      }
-
-      if (url.pathname === '/availability/book' && request.method === 'DELETE') {
-        return await handleRemoveBooking(url.searchParams.get('date'), env, corsHeaders);
-      }
-
-      if (url.pathname === '/availability/block' && request.method === 'POST') {
-        const data = await request.json();
-        return await handleBlockDate(data, env, corsHeaders);
-      }
-
-      if (url.pathname === '/availability/block' && request.method === 'DELETE') {
-        return await handleRemoveBlocked(url.searchParams.get('date'), env, corsHeaders);
+        const ip = request.headers.get('CF-Connecting-IP');
+        return await handleBookDate(data, env, corsHeaders, ip);
       }
 
       if (url.pathname === '/messages' && request.method === 'POST') {
         const data = await request.json();
-        return await handleContactMessage(data, env, corsHeaders);
-      }
-
-      if (request.method === 'POST') {
-        const data = await request.json();
-
-        if (!data.to || !data.subject || !data.html) {
-          return jsonResponse(
-            { error: 'Missing required fields: to, subject, html' },
-            400,
-            corsHeaders
-          );
-        }
-
-        const result = await sendEmailViaMailChannels(data);
-        return jsonResponse(result, 200, corsHeaders);
+        const ip = request.headers.get('CF-Connecting-IP');
+        return await handleContactMessage(data, env, corsHeaders, ip);
       }
 
       return jsonResponse({ error: 'Not found' }, 404, corsHeaders);
@@ -123,11 +120,64 @@ async function getAvailability(env) {
   return { bookedDates, blockedDates };
 }
 
-async function handleBookDate(data, env, corsHeaders) {
-  const { date, name, email, phone, service, message } = data;
+// Verifies a Cloudflare Turnstile token against Cloudflare's own siteverify
+// endpoint. If the secret isn't configured (shouldn't happen in production -
+// it's set as a Worker secret), fail OPEN rather than break booking/contact
+// entirely over a config mistake; log it so it's visible either way.
+async function verifyTurnstile(token, ip, env) {
+  if (!env.TURNSTILE_SECRET_KEY) {
+    console.error('TURNSTILE_SECRET_KEY is not configured - skipping verification');
+    return true;
+  }
+  if (!token) return false;
+
+  const formData = new URLSearchParams();
+  formData.append('secret', env.TURNSTILE_SECRET_KEY);
+  formData.append('response', token);
+  if (ip) formData.append('remoteip', ip);
+
+  try {
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: formData,
+    });
+    const outcome = await res.json();
+    return !!outcome.success;
+  } catch (error) {
+    console.error('Turnstile verification request failed:', error);
+    return false;
+  }
+}
+
+// Simple per-IP rate limit backed by the same KV namespace, as a backstop
+// behind Turnstile (Turnstile stops bots; this caps abuse from anyone who
+// still gets a token, human or not). Fails open if there's no IP to key on.
+async function checkRateLimit(env, ip, bucket, limit = 5, windowSeconds = 600) {
+  if (!ip) return true;
+
+  const key = `ratelimit:${bucket}:${ip}`;
+  const raw = await env.AVAILABILITY.get(key);
+  const count = raw ? parseInt(raw, 10) : 0;
+
+  if (count >= limit) return false;
+
+  await env.AVAILABILITY.put(key, String(count + 1), { expirationTtl: windowSeconds });
+  return true;
+}
+
+async function handleBookDate(data, env, corsHeaders, ip) {
+  const { date, name, email, phone, service, message, turnstileToken } = data;
 
   if (!date || !name || !email || !service) {
     return jsonResponse({ error: 'Missing required booking fields' }, 400, corsHeaders);
+  }
+
+  if (!(await checkRateLimit(env, ip, 'book'))) {
+    return jsonResponse({ error: 'Too many requests. Please try again later.' }, 429, corsHeaders);
+  }
+
+  if (!(await verifyTurnstile(turnstileToken, ip, env))) {
+    return jsonResponse({ error: 'Verification failed. Please refresh the page and try again.' }, 403, corsHeaders);
   }
 
   const [bookedDates, blockedDates] = await Promise.all([
@@ -177,50 +227,19 @@ async function handleBookDate(data, env, corsHeaders) {
   return jsonResponse({ success: true, message: 'Booking confirmed' }, 200, corsHeaders);
 }
 
-async function handleRemoveBooking(date, env, corsHeaders) {
-  if (!date) {
-    return jsonResponse({ error: 'Missing date' }, 400, corsHeaders);
-  }
-
-  const bookedDates = (await readDateList(env, 'bookedDates')).filter((d) => d !== date);
-  await env.AVAILABILITY.put('bookedDates', JSON.stringify(bookedDates));
-
-  const bookings = (await readDateList(env, 'bookings')).filter((b) => b.date !== date);
-  await env.AVAILABILITY.put('bookings', JSON.stringify(bookings));
-
-  return jsonResponse({ success: true }, 200, corsHeaders);
-}
-
-async function handleBlockDate(data, env, corsHeaders) {
-  const { date } = data;
-  if (!date) {
-    return jsonResponse({ error: 'Missing date' }, 400, corsHeaders);
-  }
-
-  const blockedDates = await readDateList(env, 'blockedDates');
-  if (!blockedDates.includes(date)) {
-    blockedDates.push(date);
-    await env.AVAILABILITY.put('blockedDates', JSON.stringify(blockedDates));
-  }
-
-  return jsonResponse({ success: true }, 200, corsHeaders);
-}
-
-async function handleRemoveBlocked(date, env, corsHeaders) {
-  if (!date) {
-    return jsonResponse({ error: 'Missing date' }, 400, corsHeaders);
-  }
-
-  const blockedDates = (await readDateList(env, 'blockedDates')).filter((d) => d !== date);
-  await env.AVAILABILITY.put('blockedDates', JSON.stringify(blockedDates));
-  return jsonResponse({ success: true }, 200, corsHeaders);
-}
-
-async function handleContactMessage(data, env, corsHeaders) {
-  const { name, email, phone, weddingDate, message } = data;
+async function handleContactMessage(data, env, corsHeaders, ip) {
+  const { name, email, phone, weddingDate, message, turnstileToken } = data;
 
   if (!name || !email) {
     return jsonResponse({ error: 'Missing required fields' }, 400, corsHeaders);
+  }
+
+  if (!(await checkRateLimit(env, ip, 'messages'))) {
+    return jsonResponse({ error: 'Too many requests. Please try again later.' }, 429, corsHeaders);
+  }
+
+  if (!(await verifyTurnstile(turnstileToken, ip, env))) {
+    return jsonResponse({ error: 'Verification failed. Please refresh the page and try again.' }, 403, corsHeaders);
   }
 
   const messageData = {
@@ -412,23 +431,23 @@ function buildBookingEmailHTML(bookingData) {
         <div class="booking-details">
             <div class="detail-row">
                 <span class="detail-label">👤 Client Name:</span>
-                <span class="detail-value"><strong>${bookingData.name}</strong></span>
+                <span class="detail-value"><strong>${escapeHtml(bookingData.name)}</strong></span>
             </div>
             <div class="detail-row">
                 <span class="detail-label">📧 Email:</span>
-                <span class="detail-value"><strong>${bookingData.email}</strong></span>
+                <span class="detail-value"><strong>${escapeHtml(bookingData.email)}</strong></span>
             </div>
             <div class="detail-row">
                 <span class="detail-label">📱 Phone:</span>
-                <span class="detail-value"><strong>${bookingData.phone}</strong></span>
+                <span class="detail-value"><strong>${escapeHtml(bookingData.phone)}</strong></span>
             </div>
             <div class="detail-row">
                 <span class="detail-label">📅 Booking Date:</span>
-                <span class="detail-value"><strong>${bookingData.date}</strong></span>
+                <span class="detail-value"><strong>${escapeHtml(bookingData.date)}</strong></span>
             </div>
             <div class="detail-row">
                 <span class="detail-label">🎯 Service:</span>
-                <span class="detail-value"><strong>${bookingData.service}</strong></span>
+                <span class="detail-value"><strong>${escapeHtml(bookingData.service)}</strong></span>
             </div>
             <div class="detail-row">
                 <span class="detail-label">⏰ Submitted:</span>
@@ -440,7 +459,7 @@ function buildBookingEmailHTML(bookingData) {
         <div class="message-section">
             <h3>📝 Client's Message:</h3>
             <div class="message-text">
-                ${bookingData.message.replace(/\n/g, '<br>')}
+                ${escapeHtml(bookingData.message).replace(/\n/g, '<br>')}
             </div>
         </div>
         ` : ''}
@@ -555,27 +574,27 @@ function buildContactMessageEmailHTML(messageData) {
         <div class="details">
             <div class="detail-row">
                 <span class="detail-label">👤 Name:</span>
-                <span class="detail-value"><strong>${messageData.name}</strong></span>
+                <span class="detail-value"><strong>${escapeHtml(messageData.name)}</strong></span>
             </div>
             <div class="detail-row">
                 <span class="detail-label">📧 Email:</span>
-                <span class="detail-value"><strong>${messageData.email}</strong></span>
+                <span class="detail-value"><strong>${escapeHtml(messageData.email)}</strong></span>
             </div>
             ${messageData.phone ? `
             <div class="detail-row">
                 <span class="detail-label">📱 Phone:</span>
-                <span class="detail-value"><strong>${messageData.phone}</strong></span>
+                <span class="detail-value"><strong>${escapeHtml(messageData.phone)}</strong></span>
             </div>
             ` : ''}
             ${messageData.weddingDate ? `
             <div class="detail-row">
                 <span class="detail-label">💍 Wedding Date:</span>
-                <span class="detail-value"><strong>${messageData.weddingDate}</strong></span>
+                <span class="detail-value"><strong>${escapeHtml(messageData.weddingDate)}</strong></span>
             </div>
             ` : ''}
         </div>
 
-        ${messageData.message ? `<div class="message-text">${messageData.message.replace(/\n/g, '<br>')}</div>` : ''}
+        ${messageData.message ? `<div class="message-text">${escapeHtml(messageData.message).replace(/\n/g, '<br>')}</div>` : ''}
 
         <div style="text-align: center;">
             <a href="https://wildwolfehairco.com/admin.html" class="action-button">View in Admin Panel</a>

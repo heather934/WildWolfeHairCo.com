@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit" async defer></script>
 </head>
 <body>
     <!-- Decorative floral symbols (reused throughout the page) -->
@@ -189,6 +190,7 @@
                         <option value="Consultations">Consultations</option>
                     </select>
                     <textarea id="bookingMessage" placeholder="Tell me about your vision..." rows="4"></textarea>
+                    <div id="turnstile-booking"></div>
                     <button type="submit" class="btn-submit">Confirm Booking</button>
                 </form>
             </div>
@@ -244,6 +246,7 @@
                 <input type="tel" id="contactPhoneInput" placeholder="Your Phone Number">
                 <input type="date" id="contactWeddingDate" placeholder="Wedding Date" required>
                 <textarea id="contactFormMessage" placeholder="Tell me about your vision..." rows="5"></textarea>
+                <div id="turnstile-contact"></div>
                 <button type="submit" class="submit-btn">Send Message</button>
             </form>
             <div class="contact-info">

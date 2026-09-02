@@ -12,6 +12,22 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     });
 });
 
+// Cloudflare Turnstile - renders the two widgets (contact form here,
+// booking form in calendar-script.js) once the Turnstile script loads.
+// Explicit render (rather than auto-render) so both forms can grab a
+// token at submit time and reset the widget for a fresh one afterward.
+const TURNSTILE_SITE_KEY = '0x4AAAAAAEk8p2frmfyCxpzx';
+window.turnstileContactWidgetId = null;
+window.turnstileBookingWidgetId = null;
+window.onloadTurnstileCallback = function () {
+    if (document.getElementById('turnstile-contact')) {
+        window.turnstileContactWidgetId = turnstile.render('#turnstile-contact', { sitekey: TURNSTILE_SITE_KEY });
+    }
+    if (document.getElementById('turnstile-booking')) {
+        window.turnstileBookingWidgetId = turnstile.render('#turnstile-booking', { sitekey: TURNSTILE_SITE_KEY });
+    }
+};
+
 // Contact form handling
 const contactForm = document.getElementById('contactForm');
 // Same Worker the booking calendar uses to send email - see calendar-script.js
@@ -42,6 +58,14 @@ if (contactForm) {
             return;
         }
 
+        const turnstileToken = (window.turnstileContactWidgetId !== null && typeof turnstile !== 'undefined')
+            ? turnstile.getResponse(window.turnstileContactWidgetId)
+            : '';
+        if (!turnstileToken) {
+            alert('Please complete the verification checkbox before sending.');
+            return;
+        }
+
         submitBtn.disabled = true;
         submitBtn.textContent = 'Sending...';
 
@@ -55,6 +79,7 @@ if (contactForm) {
                     phone: phoneInput.value,
                     weddingDate: dateInput.value,
                     message: messageInput.value,
+                    turnstileToken,
                 }),
             });
 
@@ -71,6 +96,9 @@ if (contactForm) {
             alert('Sorry, something went wrong sending your message. Please try again or contact Zoee directly.');
         } finally {
             submitBtn.disabled = false;
+            if (window.turnstileContactWidgetId !== null && typeof turnstile !== 'undefined') {
+                turnstile.reset(window.turnstileContactWidgetId);
+            }
             setTimeout(() => {
                 submitBtn.textContent = originalBtnText;
                 submitBtn.style.backgroundColor = '';

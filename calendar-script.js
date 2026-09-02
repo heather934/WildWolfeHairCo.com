@@ -133,6 +133,14 @@ class BookingCalendar {
             return;
         }
 
+        const turnstileToken = (window.turnstileBookingWidgetId !== null && window.turnstileBookingWidgetId !== undefined && typeof turnstile !== 'undefined')
+            ? turnstile.getResponse(window.turnstileBookingWidgetId)
+            : '';
+        if (!turnstileToken) {
+            alert('Please complete the verification checkbox before confirming.');
+            return;
+        }
+
         const dateString = this.formatDate(this.selectedDate);
         const bookingData = {
             date: dateString,
@@ -141,6 +149,7 @@ class BookingCalendar {
             phone: document.getElementById('bookingPhone').value,
             service: document.getElementById('bookingService').value,
             message: document.getElementById('bookingMessage').value,
+            turnstileToken,
         };
 
         const submitBtn = document.querySelector('.btn-submit');
@@ -180,6 +189,9 @@ class BookingCalendar {
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = 'Confirm Booking';
+            if (window.turnstileBookingWidgetId !== null && window.turnstileBookingWidgetId !== undefined && typeof turnstile !== 'undefined') {
+                turnstile.reset(window.turnstileBookingWidgetId);
+            }
         }
     }
 
