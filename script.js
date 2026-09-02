@@ -14,47 +14,68 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
 
 // Contact form handling
 const contactForm = document.getElementById('contactForm');
+// Same Worker the booking calendar uses to send email - see calendar-script.js
+const CONTACT_WORKER_URL = 'https://send-booking-email.h-m-ward1846.workers.dev';
 
 if (contactForm) {
-    contactForm.addEventListener('submit', function(e) {
+    contactForm.addEventListener('submit', async function(e) {
         e.preventDefault();
-        
-        // Get form values
-        const formData = new FormData(this);
-        const data = Object.fromEntries(formData);
-        
-        // Show success message
-        const formInputs = this.querySelectorAll('input, textarea');
+
+        const nameInput = document.getElementById('contactName');
+        const emailInput = document.getElementById('contactFormEmail');
+        const phoneInput = document.getElementById('contactPhoneInput');
+        const dateInput = document.getElementById('contactWeddingDate');
+        const messageInput = document.getElementById('contactFormMessage');
         const submitBtn = this.querySelector('.submit-btn');
         const originalBtnText = submitBtn.textContent;
-        
+
         // Simple validation
-        const nameInput = this.querySelector('input[type="text"]');
-        const emailInput = this.querySelector('input[type="email"]');
-        const dateInput = this.querySelector('input[type="date"]');
-        
         if (!nameInput.value || !emailInput.value || !dateInput.value) {
             alert('Please fill in all required fields.');
             return;
         }
-        
+
         // Email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(emailInput.value)) {
             alert('Please enter a valid email address.');
             return;
         }
-        
-        // Clear form and show success message
-        submitBtn.textContent = 'Message Sent! ✓';
-        submitBtn.style.backgroundColor = '#6b7e5b';
-        
-        formInputs.forEach(input => input.value = '');
-        
-        setTimeout(() => {
-            submitBtn.textContent = originalBtnText;
-            submitBtn.style.backgroundColor = '';
-        }, 3000);
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sending...';
+
+        try {
+            const response = await fetch(`${CONTACT_WORKER_URL}/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: nameInput.value,
+                    email: emailInput.value,
+                    phone: phoneInput.value,
+                    weddingDate: dateInput.value,
+                    message: messageInput.value,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server returned ${response.status}`);
+            }
+
+            submitBtn.textContent = 'Message Sent! ✓';
+            submitBtn.style.backgroundColor = '#6b7e5b';
+            this.reset();
+        } catch (error) {
+            console.error('Failed to send message:', error);
+            submitBtn.textContent = 'Send Message';
+            alert('Sorry, something went wrong sending your message. Please try again or contact Zoee directly.');
+        } finally {
+            submitBtn.disabled = false;
+            setTimeout(() => {
+                submitBtn.textContent = originalBtnText;
+                submitBtn.style.backgroundColor = '';
+            }, 3000);
+        }
     });
 }
 
@@ -149,5 +170,32 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// Floral arch at the top of the hero drifts down and fades as you scroll past it
+const heroArch = document.querySelector('.hero-arch');
+
+if (heroArch) {
+    const heroSection = document.querySelector('.hero');
+    let archTicking = false;
+
+    const updateHeroArch = () => {
+        const heroHeight = heroSection ? heroSection.offsetHeight : 600;
+        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+        const progress = Math.min(scrollY / heroHeight, 1);
+
+        heroArch.style.transform = `translateY(${scrollY * 0.4}px)`;
+        heroArch.style.opacity = String(0.9 * (1 - progress));
+        archTicking = false;
+    };
+
+    window.addEventListener('scroll', () => {
+        if (!archTicking) {
+            requestAnimationFrame(updateHeroArch);
+            archTicking = true;
+        }
+    }, { passive: true });
+
+    updateHeroArch();
+}
 
 console.log('Zoee\'s Bridal Hair Styling website loaded successfully!');

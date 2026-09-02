@@ -11,6 +11,43 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- Decorative floral symbols (reused throughout the page) -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+        <defs>
+            <symbol id="deco-flower" viewBox="-10 -10 20 20">
+                <circle cx="0" cy="-5" r="4.4" fill="#ffffff" stroke="#a8b8a8" stroke-width="0.4" stroke-opacity="0.5"/>
+                <circle cx="0" cy="5" r="4.4" fill="#ffffff" stroke="#a8b8a8" stroke-width="0.4" stroke-opacity="0.5"/>
+                <circle cx="-5" cy="0" r="4.4" fill="#ffffff" stroke="#a8b8a8" stroke-width="0.4" stroke-opacity="0.5"/>
+                <circle cx="5" cy="0" r="4.4" fill="#ffffff" stroke="#a8b8a8" stroke-width="0.4" stroke-opacity="0.5"/>
+                <circle cx="0" cy="0" r="3" fill="#d4af37" opacity="0.55"/>
+            </symbol>
+
+            <symbol id="deco-veil" viewBox="0 0 200 300">
+                <path d="M100,8 C50,35 24,130 34,225 Q67,205 100,222 Q133,205 166,225 C176,130 150,35 100,8 Z"
+                      fill="#ffffff" fill-opacity="0.9" stroke="#a8b8a8" stroke-width="1.2" stroke-opacity="0.45"/>
+                <path d="M100,20 C88,90 92,170 100,222" fill="none" stroke="#a8b8a8" stroke-width="1" stroke-opacity="0.3"/>
+                <g transform="translate(74,16) scale(0.75)"><use href="#deco-flower"/></g>
+                <g transform="translate(100,4) scale(0.9)"><use href="#deco-flower"/></g>
+                <g transform="translate(126,16) scale(0.75)"><use href="#deco-flower"/></g>
+            </symbol>
+
+            <symbol id="deco-bouquet" viewBox="0 0 200 220">
+                <path d="M100,212 L60,110 M100,212 L100,95 M100,212 L140,110 M100,212 L78,120 M100,212 L122,120"
+                      fill="none" stroke="#a8b8a8" stroke-width="2" stroke-opacity="0.4"/>
+                <path d="M84,206 L100,190 L116,206 L100,222 Z" fill="#d4af37" opacity="0.6"/>
+                <g transform="translate(60,108) scale(1.1)"><use href="#deco-flower"/></g>
+                <g transform="translate(100,92) scale(1.25)"><use href="#deco-flower"/></g>
+                <g transform="translate(140,108) scale(1.1)"><use href="#deco-flower"/></g>
+                <g transform="translate(78,118) scale(0.9)"><use href="#deco-flower"/></g>
+                <g transform="translate(122,118) scale(0.9)"><use href="#deco-flower"/></g>
+            </symbol>
+
+            <pattern id="smallFlowerBorder" width="60" height="60" patternUnits="userSpaceOnUse">
+                <use href="#deco-flower" x="10" y="10" width="40" height="40"/>
+            </pattern>
+        </defs>
+    </svg>
+
     <!-- Navigation -->
     <nav class="navbar">
         <div class="container">
@@ -22,6 +59,7 @@
                 <li><a href="#home">Home</a></li>
                 <li><a href="#services">Services</a></li>
                 <li><a href="#gallery">Gallery</a></li>
+                <li><a href="#book">Book Now</a></li>
                 <li><a href="#about">About</a></li>
                 <li><a href="#contact">Contact</a></li>
             </ul>
@@ -30,15 +68,21 @@
 
     <!-- Hero Section -->
     <section id="home" class="hero">
+        <div class="hero-arch" aria-hidden="true">
+            <svg class="hero-border-top" focusable="false"><rect width="100%" height="100%" fill="url(#smallFlowerBorder)"/></svg>
+            <svg class="hero-border-left" focusable="false"><rect width="100%" height="100%" fill="url(#smallFlowerBorder)"/></svg>
+            <svg class="hero-border-right" focusable="false"><rect width="100%" height="100%" fill="url(#smallFlowerBorder)"/></svg>
+        </div>
         <div class="hero-content">
             <h2>Your Perfect Wedding Day Hair</h2>
             <p>Elegant, luxurious bridal hairstyles tailored to you</p>
-            <a href="#contact" class="cta-button">Book Your Consultation</a>
+            <a href="#book" class="cta-button">Book Your Consultation</a>
         </div>
     </section>
 
     <!-- Services Section -->
     <section id="services" class="services">
+        <svg class="decor decor-veil decor-services" viewBox="0 0 200 300" aria-hidden="true" focusable="false"><use href="#deco-veil"/></svg>
         <div class="container">
             <h2>My Services</h2>
             <div class="services-grid">
@@ -72,6 +116,7 @@
 
     <!-- Gallery Section -->
     <section id="gallery" class="gallery">
+        <svg class="decor decor-bouquet decor-gallery" viewBox="0 0 200 220" aria-hidden="true" focusable="false"><use href="#deco-bouquet"/></svg>
         <div class="container">
             <h2>Gallery</h2>
             <p class="gallery-subtitle">Elegant bridal styles and inspirations</p>
@@ -110,8 +155,60 @@
         </div>
     </section>
 
+    <!-- Book Now Section -->
+    <section id="book" class="booking">
+        <div class="container">
+            <h2>Book Your Appointment</h2>
+            <p class="booking-subtitle">Select an available date below and share a few details about your big day</p>
+            <div class="booking-layout">
+                <div class="calendar-container">
+                    <div class="calendar-legend">
+                        <span class="legend-item"><span class="legend-swatch available"></span> Available</span>
+                        <span class="legend-item"><span class="legend-swatch booked"></span> Booked</span>
+                    </div>
+                    <div class="calendar-header">
+                        <button type="button" id="prevMonth" class="calendar-nav" aria-label="Previous month">&#10094;</button>
+                        <h3 id="currentMonth"></h3>
+                        <button type="button" id="nextMonth" class="calendar-nav" aria-label="Next month">&#10095;</button>
+                    </div>
+                    <div class="calendar-grid" id="calendarGrid"></div>
+                </div>
+                <form class="booking-form" id="bookingForm">
+                    <label for="selectedDate">Selected Date</label>
+                    <input type="text" id="selectedDate" placeholder="Choose a date from the calendar" readonly required>
+                    <input type="text" id="bookingName" placeholder="Your Name" required>
+                    <input type="email" id="bookingEmail" placeholder="Your Email" required>
+                    <input type="tel" id="bookingPhone" placeholder="Your Phone Number" required>
+                    <select id="bookingService" required>
+                        <option value="" disabled selected>Select a Service</option>
+                        <option value="Bridal Hair Styling">Bridal Hair Styling</option>
+                        <option value="Bridesmaid Styling">Bridesmaid Styling</option>
+                        <option value="Hair Trial">Hair Trial</option>
+                        <option value="Wedding Day Touch-Ups">Wedding Day Touch-Ups</option>
+                        <option value="Special Events">Special Events</option>
+                        <option value="Consultations">Consultations</option>
+                    </select>
+                    <textarea id="bookingMessage" placeholder="Tell me about your vision..." rows="4"></textarea>
+                    <button type="submit" class="btn-submit">Confirm Booking</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Booking Confirmation Modal -->
+    <div id="confirmationModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Booking Request Received!</h2>
+            <p>Thank you! Zoee will reach out to confirm your appointment shortly.</p>
+            <div id="confirmationDetails"></div>
+            <p>A confirmation will be sent to <strong id="confirmEmail"></strong>.</p>
+        </div>
+    </div>
+
     <!-- About Section -->
     <section id="about" class="about">
+        <svg class="decor decor-veil decor-about" viewBox="0 0 200 300" aria-hidden="true" focusable="false"><use href="#deco-veil"/></svg>
         <div class="container">
             <div class="about-content">
                 <h2>About Zoee</h2>
@@ -137,15 +234,16 @@
 
     <!-- Contact Section -->
     <section id="contact" class="contact">
+        <svg class="decor decor-bouquet decor-contact" viewBox="0 0 200 220" aria-hidden="true" focusable="false"><use href="#deco-bouquet"/></svg>
         <div class="container">
             <h2>Get In Touch</h2>
             <p>Ready to book your bridal styling? Let's create something beautiful together.</p>
             <form class="contact-form" id="contactForm">
-                <input type="text" placeholder="Your Name" required>
-                <input type="email" placeholder="Your Email" required>
-                <input type="tel" placeholder="Your Phone Number">
-                <input type="date" placeholder="Wedding Date" required>
-                <textarea placeholder="Tell me about your vision..." rows="5"></textarea>
+                <input type="text" id="contactName" placeholder="Your Name" required>
+                <input type="email" id="contactFormEmail" placeholder="Your Email" required>
+                <input type="tel" id="contactPhoneInput" placeholder="Your Phone Number">
+                <input type="date" id="contactWeddingDate" placeholder="Wedding Date" required>
+                <textarea id="contactFormMessage" placeholder="Tell me about your vision..." rows="5"></textarea>
                 <button type="submit" class="submit-btn">Send Message</button>
             </form>
             <div class="contact-info">
@@ -169,5 +267,6 @@
     </footer>
 
     <script src="script.js"></script>
+    <script src="calendar-script.js"></script>
 </body>
 </html>
