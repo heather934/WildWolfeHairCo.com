@@ -681,6 +681,12 @@ footer .container {
     color: var(--gold);
 }
 
+.credit {
+    flex-basis: 100%;
+    font-size: 12px;
+    color: var(--sage);
+}
+
 /* Decorative Floral Elements */
 .hero-arch {
     position: absolute;
