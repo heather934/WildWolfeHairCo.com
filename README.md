@@ -81,10 +81,23 @@ The "Book Now" section on the homepage (`calendar-script.js`) and the admin pane
 - A date a client books on the public calendar immediately shows as booked in the admin panel.
 - A date Zoee blocks (or a booking she removes) in the admin panel immediately becomes unavailable/available again on the public calendar.
 
-The Worker also sends the booking notification email via MailChannels once a booking is saved.
+The Worker also sends the booking notification email via MailChannels once a booking is saved, and stores the full booking details (name/email/phone/message, not just the date) under a `bookings` KV key. That full detail is never returned by the public `GET /availability` endpoint (only bare date strings are) — it's only readable through `/api/admin/bookings`, an Access-protected Pages Function, and is what powers the "Bookings Overview" list in the admin Calendar tab.
 
 ### Redeploying the Worker
 If you change `cloudflare-worker.js`, redeploy it to Cloudflare (Workers & Pages > `send-booking-email` > upload the updated script) so the live Worker matches the repo. The KV binding (`AVAILABILITY`) must stay attached across redeploys.
+
+## Contact Messages
+
+The homepage "Get In Touch" form (`script.js`) posts to the same Worker's `POST /messages` route, which stores the message in the `AVAILABILITY` KV namespace (`contactMessages` key) and emails both admins via MailChannels — the same pattern as bookings. The admin panel's Messages tab reads/deletes/marks-read through `/api/admin/messages` (Access-protected, `functions/api/admin/messages.js`).
+
+## Admin Panel Sections
+
+`admin-script.js` (loaded by `admin.html`) drives the sidebar navigation, dashboard stats, logout, and the Services / Gallery / About / Contact Info editors. Two different kinds of data live behind those tabs:
+
+- **Live and shared** (backed by the `AVAILABILITY` KV namespace, visible to every admin and to the public site where relevant): Calendar & Booking, Bookings Overview, and Messages.
+- **Local drafts only** (saved to `localStorage` in whichever browser you're using): Services, Gallery, About, and Contact Info/Social Links. There's no content backend for these yet, so edits here are a draft you can review and copy from — they do **not** change the live homepage by themselves. To publish a change, edit the matching text directly in `index.html` (e.g. a service description, the About paragraphs, the footer contact info) and redeploy the site. If you'd like these to also save live and update the homepage automatically, that's a follow-up project similar to how booking/availability was wired up.
+
+Logout uses Cloudflare Access's built-in `/cdn-cgi/access/logout` endpoint, which clears the Access session cookie.
 
 ## Admin Login (Cloudflare Access)
 

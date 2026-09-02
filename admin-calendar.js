@@ -3,6 +3,7 @@ class AdminCalendarManager {
     constructor() {
         this.blockedDates = [];
         this.bookedDates = [];
+        this.bookingDetails = [];
         this.currentDate = new Date();
         // Reads share the same Worker + KV namespace the public booking
         // calendar reads from. Mutations (block/unblock/remove booking) go
@@ -15,8 +16,22 @@ class AdminCalendarManager {
     }
 
     async init() {
-        await this.loadData();
+        await Promise.all([this.loadData(), this.loadBookingDetails()]);
         this.renderAdminCalendar();
+        this.renderBookingsOverview();
+        this.renderSMSStatus();
+    }
+
+    renderSMSStatus() {
+        const settings = JSON.parse(localStorage.getItem('smsSettings') || '{}');
+        const statusEl = document.getElementById('smsStatusText');
+        const checkbox = document.getElementById('enableSMS');
+        if (statusEl) {
+            statusEl.textContent = `SMS Notifications: ${settings.enabled ? 'Enabled' : 'Disabled'}`;
+        }
+        if (checkbox) {
+            checkbox.checked = !!settings.enabled;
+        }
     }
 
     initializeEventListeners() {
@@ -25,8 +40,58 @@ class AdminCalendarManager {
         document.getElementById('cancelBlockBtn')?.addEventListener('click', () => this.toggleBlockDateForm());
         document.getElementById('prevAdminMonth')?.addEventListener('click', () => this.previousMonth());
         document.getElementById('nextAdminMonth')?.addEventListener('click', () => this.nextMonth());
-        document.getElementById('sendSMSNotificationBtn')?.addEventListener('click', () => this.setupSMSNotifications());
+        document.getElementById('setupSMSBtn')?.addEventListener('click', () => this.setupSMSNotifications());
         document.getElementById('saveSMSSettingsBtn')?.addEventListener('click', () => this.saveSMSSettings());
+    }
+
+    async loadBookingDetails() {
+        try {
+            const response = await fetch('/api/admin/bookings');
+            if (!response.ok) {
+                throw new Error(`Server returned ${response.status}`);
+            }
+            const data = await response.json();
+            this.bookingDetails = data.bookings || [];
+        } catch (error) {
+            console.error('Failed to load booking details:', error);
+        }
+    }
+
+    renderBookingsOverview() {
+        const container = document.getElementById('bookingsOverview');
+        if (!container) return;
+
+        if (this.bookingDetails.length === 0) {
+            container.innerHTML = '<p>No bookings yet. Bookings will appear here as clients submit them.</p>';
+            return;
+        }
+
+        const sorted = [...this.bookingDetails].sort((a, b) => a.date.localeCompare(b.date));
+
+        container.className = 'messages-container';
+        container.innerHTML = sorted.map((booking) => `
+            <div class="message-card">
+                <div class="message-header">
+                    <span class="message-name">${this.escapeHtml(booking.name)} — ${this.escapeHtml(booking.service)}</span>
+                    <span class="message-date">${this.escapeHtml(booking.date)}</span>
+                </div>
+                <div class="message-email">${this.escapeHtml(booking.email)}${booking.phone ? ` • ${this.escapeHtml(booking.phone)}` : ''}</div>
+                ${booking.message ? `<div class="message-content">${this.escapeHtml(booking.message)}</div>` : ''}
+                <div class="message-actions">
+                    <button type="button" class="btn-secondary" data-remove-booking="${this.escapeHtml(booking.date)}">Remove Booking</button>
+                </div>
+            </div>
+        `).join('');
+
+        container.querySelectorAll('[data-remove-booking]').forEach((btn) => {
+            btn.addEventListener('click', () => this.removeBooking(btn.dataset.removeBooking));
+        });
+    }
+
+    escapeHtml(value) {
+        const div = document.createElement('div');
+        div.textContent = value ?? '';
+        return div.innerHTML;
     }
 
     renderAdminCalendar() {
@@ -120,6 +185,10 @@ class AdminCalendarManager {
         if (countEl) {
             countEl.textContent = this.bookedDates.length;
         }
+        const blockedCountEl = document.getElementById('blockedDatesCount');
+        if (blockedCountEl) {
+            blockedCountEl.textContent = this.blockedDates.length;
+        }
     }
 
     toggleBlockDateForm() {
@@ -207,7 +276,9 @@ class AdminCalendarManager {
             }
 
             this.bookedDates = this.bookedDates.filter(d => d !== dateString);
+            this.bookingDetails = this.bookingDetails.filter(b => b.date !== dateString);
             this.renderAdminCalendar();
+            this.renderBookingsOverview();
             this.showNotification('Booking removed!', 'success');
         } catch (error) {
             console.error('Failed to remove booking:', error);
@@ -292,6 +363,7 @@ class AdminCalendarManager {
         };
 
         localStorage.setItem('smsSettings', JSON.stringify(smsSettings));
+        this.renderSMSStatus();
         this.showNotification('SMS settings saved! Notifications enabled.', 'success');
         modal.style.display = 'none';
     }
@@ -301,6 +373,7 @@ class AdminCalendarManager {
         const settings = JSON.parse(localStorage.getItem('smsSettings') || '{}');
         settings.enabled = enableSMS;
         localStorage.setItem('smsSettings', JSON.stringify(settings));
+        this.renderSMSStatus();
         this.showNotification('SMS settings updated!', 'success');
     }
 

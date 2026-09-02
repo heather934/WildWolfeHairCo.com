@@ -23,13 +23,13 @@
  *   DELETE /availability/book?date=YYYY-MM-DD
  *   POST   /availability/block  -> body: { date, reason }
  *   DELETE /availability/block?date=YYYY-MM-DD
+ *   POST   /messages            -> body: { name, email, phone, weddingDate, message } (public contact form)
  *   POST   /                    -> legacy generic email send: { to, subject, html, text?, from? }
  *
- * NOTE: The /availability/block and DELETE endpoints are meant for the admin
- * panel and are NOT currently authenticated - anyone who knows the worker
- * URL could call them directly. Add real authentication (e.g. a shared
- * admin key checked against an env var, or Cloudflare Access in front of
- * admin.html) before relying on this for a real business.
+ * Full booking details (name/email/phone/message) and contact form messages
+ * are written to KV too, but are only ever read back through this site's own
+ * Access-protected /api/admin/* routes (see functions/api/admin/) - never
+ * through this worker directly, since that data is not meant to be public.
  */
 
 const ADMIN_EMAILS = [
@@ -73,6 +73,11 @@ export default {
 
       if (url.pathname === '/availability/block' && request.method === 'DELETE') {
         return await handleRemoveBlocked(url.searchParams.get('date'), env, corsHeaders);
+      }
+
+      if (url.pathname === '/messages' && request.method === 'POST') {
+        const data = await request.json();
+        return await handleContactMessage(data, env, corsHeaders);
       }
 
       if (request.method === 'POST') {
@@ -147,6 +152,10 @@ async function handleBookDate(data, env, corsHeaders) {
     bookingDate: new Date().toLocaleString(),
   };
 
+  const bookings = await readDateList(env, 'bookings');
+  bookings.push(bookingData);
+  await env.AVAILABILITY.put('bookings', JSON.stringify(bookings));
+
   try {
     const emailHtml = buildBookingEmailHTML(bookingData);
     await Promise.all(
@@ -175,6 +184,10 @@ async function handleRemoveBooking(date, env, corsHeaders) {
 
   const bookedDates = (await readDateList(env, 'bookedDates')).filter((d) => d !== date);
   await env.AVAILABILITY.put('bookedDates', JSON.stringify(bookedDates));
+
+  const bookings = (await readDateList(env, 'bookings')).filter((b) => b.date !== date);
+  await env.AVAILABILITY.put('bookings', JSON.stringify(bookings));
+
   return jsonResponse({ success: true }, 200, corsHeaders);
 }
 
@@ -201,6 +214,47 @@ async function handleRemoveBlocked(date, env, corsHeaders) {
   const blockedDates = (await readDateList(env, 'blockedDates')).filter((d) => d !== date);
   await env.AVAILABILITY.put('blockedDates', JSON.stringify(blockedDates));
   return jsonResponse({ success: true }, 200, corsHeaders);
+}
+
+async function handleContactMessage(data, env, corsHeaders) {
+  const { name, email, phone, weddingDate, message } = data;
+
+  if (!name || !email) {
+    return jsonResponse({ error: 'Missing required fields' }, 400, corsHeaders);
+  }
+
+  const messageData = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    name,
+    email,
+    phone: phone || '',
+    weddingDate: weddingDate || '',
+    message: message || '',
+    receivedAt: new Date().toISOString(),
+    read: false,
+  };
+
+  const messages = await readDateList(env, 'contactMessages');
+  messages.unshift(messageData);
+  await env.AVAILABILITY.put('contactMessages', JSON.stringify(messages));
+
+  try {
+    const emailHtml = buildContactMessageEmailHTML(messageData);
+    await Promise.all(
+      ADMIN_EMAILS.map((admin) =>
+        sendEmailViaMailChannels({
+          to: admin.email,
+          subject: `💬 New Contact Message: ${name}`,
+          html: emailHtml,
+          from: { email: 'bookings@wildwolfehaircostyling.com', name: 'Zoee - Bridal Hair Styling' },
+        })
+      )
+    );
+  } catch (emailError) {
+    console.error('Message saved but notification email failed:', emailError);
+  }
+
+  return jsonResponse({ success: true, message: 'Message sent' }, 200, corsHeaders);
 }
 
 async function sendEmailViaMailChannels(data) {
@@ -397,6 +451,138 @@ function buildBookingEmailHTML(bookingData) {
 
         <div class="footer">
             <p>This is an automated booking notification from Zoee's Bridal Hair Styling website.</p>
+            <p>© 2026 Zoee - Bridal Hair Styling. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+        `;
+}
+
+function buildContactMessageEmailHTML(messageData) {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Lato', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f3f0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #d4af37;
+        }
+        .header h1 {
+            color: #6b7e5b;
+            margin: 0;
+            font-size: 28px;
+        }
+        .details {
+            background-color: #f5f3f0;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #6b7e5b;
+            width: 40%;
+        }
+        .detail-value {
+            color: #333;
+            width: 60%;
+            text-align: right;
+        }
+        .message-text {
+            color: #666;
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #d4af37;
+            margin-top: 20px;
+        }
+        .action-button {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 30px;
+            background-color: #6b7e5b;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            color: #999;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💬 New Contact Message</h1>
+            <p>Someone reached out through the website contact form</p>
+        </div>
+
+        <div class="details">
+            <div class="detail-row">
+                <span class="detail-label">👤 Name:</span>
+                <span class="detail-value"><strong>${messageData.name}</strong></span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">📧 Email:</span>
+                <span class="detail-value"><strong>${messageData.email}</strong></span>
+            </div>
+            ${messageData.phone ? `
+            <div class="detail-row">
+                <span class="detail-label">📱 Phone:</span>
+                <span class="detail-value"><strong>${messageData.phone}</strong></span>
+            </div>
+            ` : ''}
+            ${messageData.weddingDate ? `
+            <div class="detail-row">
+                <span class="detail-label">💍 Wedding Date:</span>
+                <span class="detail-value"><strong>${messageData.weddingDate}</strong></span>
+            </div>
+            ` : ''}
+        </div>
+
+        ${messageData.message ? `<div class="message-text">${messageData.message.replace(/\n/g, '<br>')}</div>` : ''}
+
+        <div style="text-align: center;">
+            <a href="https://wildwolfehairco.com/admin.html" class="action-button">View in Admin Panel</a>
+        </div>
+
+        <div class="footer">
+            <p>This is an automated notification from Zoee's Bridal Hair Styling website.</p>
             <p>© 2026 Zoee - Bridal Hair Styling. All rights reserved.</p>
         </div>
     </div>
