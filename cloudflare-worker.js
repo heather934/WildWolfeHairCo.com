@@ -35,6 +35,11 @@
  * them back here without auth - this worker's URL is public (it's in the
  * site's own client-side JS), so anything unauthenticated here is reachable
  * by anyone who finds it, not just this site's visitors.
+ *
+ * Both POST routes require a Cloudflare Turnstile token (body field
+ * `turnstileToken`, verified server-side against the `TURNSTILE_SECRET_KEY`
+ * secret) and are additionally rate-limited per IP via the AVAILABILITY KV
+ * namespace, to keep them from being scripted/spammed.
  */
 
 const ADMIN_EMAILS = [
@@ -77,12 +82,14 @@ export default {
 
       if (url.pathname === '/availability/book' && request.method === 'POST') {
         const data = await request.json();
-        return await handleBookDate(data, env, corsHeaders);
+        const ip = request.headers.get('CF-Connecting-IP');
+        return await handleBookDate(data, env, corsHeaders, ip);
       }
 
       if (url.pathname === '/messages' && request.method === 'POST') {
         const data = await request.json();
-        return await handleContactMessage(data, env, corsHeaders);
+        const ip = request.headers.get('CF-Connecting-IP');
+        return await handleContactMessage(data, env, corsHeaders, ip);
       }
 
       return jsonResponse({ error: 'Not found' }, 404, corsHeaders);
@@ -113,11 +120,64 @@ async function getAvailability(env) {
   return { bookedDates, blockedDates };
 }
 
-async function handleBookDate(data, env, corsHeaders) {
-  const { date, name, email, phone, service, message } = data;
+// Verifies a Cloudflare Turnstile token against Cloudflare's own siteverify
+// endpoint. If the secret isn't configured (shouldn't happen in production -
+// it's set as a Worker secret), fail OPEN rather than break booking/contact
+// entirely over a config mistake; log it so it's visible either way.
+async function verifyTurnstile(token, ip, env) {
+  if (!env.TURNSTILE_SECRET_KEY) {
+    console.error('TURNSTILE_SECRET_KEY is not configured - skipping verification');
+    return true;
+  }
+  if (!token) return false;
+
+  const formData = new URLSearchParams();
+  formData.append('secret', env.TURNSTILE_SECRET_KEY);
+  formData.append('response', token);
+  if (ip) formData.append('remoteip', ip);
+
+  try {
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: formData,
+    });
+    const outcome = await res.json();
+    return !!outcome.success;
+  } catch (error) {
+    console.error('Turnstile verification request failed:', error);
+    return false;
+  }
+}
+
+// Simple per-IP rate limit backed by the same KV namespace, as a backstop
+// behind Turnstile (Turnstile stops bots; this caps abuse from anyone who
+// still gets a token, human or not). Fails open if there's no IP to key on.
+async function checkRateLimit(env, ip, bucket, limit = 5, windowSeconds = 600) {
+  if (!ip) return true;
+
+  const key = `ratelimit:${bucket}:${ip}`;
+  const raw = await env.AVAILABILITY.get(key);
+  const count = raw ? parseInt(raw, 10) : 0;
+
+  if (count >= limit) return false;
+
+  await env.AVAILABILITY.put(key, String(count + 1), { expirationTtl: windowSeconds });
+  return true;
+}
+
+async function handleBookDate(data, env, corsHeaders, ip) {
+  const { date, name, email, phone, service, message, turnstileToken } = data;
 
   if (!date || !name || !email || !service) {
     return jsonResponse({ error: 'Missing required booking fields' }, 400, corsHeaders);
+  }
+
+  if (!(await checkRateLimit(env, ip, 'book'))) {
+    return jsonResponse({ error: 'Too many requests. Please try again later.' }, 429, corsHeaders);
+  }
+
+  if (!(await verifyTurnstile(turnstileToken, ip, env))) {
+    return jsonResponse({ error: 'Verification failed. Please refresh the page and try again.' }, 403, corsHeaders);
   }
 
   const [bookedDates, blockedDates] = await Promise.all([
@@ -167,11 +227,19 @@ async function handleBookDate(data, env, corsHeaders) {
   return jsonResponse({ success: true, message: 'Booking confirmed' }, 200, corsHeaders);
 }
 
-async function handleContactMessage(data, env, corsHeaders) {
-  const { name, email, phone, weddingDate, message } = data;
+async function handleContactMessage(data, env, corsHeaders, ip) {
+  const { name, email, phone, weddingDate, message, turnstileToken } = data;
 
   if (!name || !email) {
     return jsonResponse({ error: 'Missing required fields' }, 400, corsHeaders);
+  }
+
+  if (!(await checkRateLimit(env, ip, 'messages'))) {
+    return jsonResponse({ error: 'Too many requests. Please try again later.' }, 429, corsHeaders);
+  }
+
+  if (!(await verifyTurnstile(turnstileToken, ip, env))) {
+    return jsonResponse({ error: 'Verification failed. Please refresh the page and try again.' }, 403, corsHeaders);
   }
 
   const messageData = {
