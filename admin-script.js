@@ -292,9 +292,15 @@ class AdminPanel {
             return;
         }
 
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-        if (!allowedTypes.includes(file.type)) {
-            this.showNotification('Please choose a JPG, PNG, or WebP image.', 'error');
+        // Phone cameras don't always report a usable file.type: iPhones send
+        // HEIC/HEIF photos, and some mobile browsers leave file.type blank
+        // for camera-roll picks. Fall back to checking the file extension so
+        // those aren't rejected outright.
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+        const allowedExtensions = /\.(jpe?g|png|webp|heic|heif)$/i;
+        const typeOk = allowedTypes.includes(file.type) || (!file.type && allowedExtensions.test(file.name));
+        if (!typeOk) {
+            this.showNotification('Please choose a JPG, PNG, WebP, or HEIC (iPhone) image.', 'error');
             return;
         }
 
@@ -317,8 +323,16 @@ class AdminPanel {
         };
         reader.onload = () => {
             fill.style.width = '100%';
-            this.gallery.push({ id: `${Date.now()}`, src: reader.result, caption });
-            this.save(ADMIN_STORAGE_KEYS.gallery, this.gallery);
+            const entry = { id: `${Date.now()}`, src: reader.result, caption };
+            this.gallery.push(entry);
+            try {
+                this.save(ADMIN_STORAGE_KEYS.gallery, this.gallery);
+            } catch (err) {
+                this.gallery.pop();
+                progress.style.display = 'none';
+                this.showNotification('Storage is full. Delete an existing gallery image and try again.', 'error');
+                return;
+            }
             this.renderGallery();
 
             fileInput.value = '';
