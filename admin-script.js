@@ -1,17 +1,19 @@
 // Admin panel core: sidebar navigation, dashboard stats, logout, and the
 // content editors for Services / Gallery / About / Contact Info.
 //
-// There's no content backend for these sections yet (unlike Calendar &
-// Booking and Messages, which are backed by the shared Cloudflare KV
-// namespace via cloudflare-worker.js / functions/api/admin/*) - so these
-// save to this browser's localStorage. That means edits here are a draft
-// Zoee can review and reuse, but won't change the live site by themselves;
-// the matching text in index.html still needs to be updated to publish a
-// change. Calendar/Booking and Messages, by contrast, are fully live.
+// Gallery is fully live: uploads go through functions/api/admin/gallery.js
+// to an R2 bucket + the shared AVAILABILITY KV namespace, and the public
+// homepage (gallery-script.js) reads the same data via functions/api/gallery/*
+// - same pattern as Calendar/Booking and Messages.
+//
+// Services / About / Contact Info have no content backend yet, so those
+// still save to this browser's localStorage. That means edits there are a
+// draft Zoee can review and reuse, but won't change the live site by
+// themselves; the matching text in index.html still needs to be updated to
+// publish a change.
 
 const ADMIN_STORAGE_KEYS = {
     services: 'admin_services',
-    gallery: 'admin_gallery',
     about: 'admin_about',
     contact: 'admin_contact',
 };
@@ -49,7 +51,7 @@ const DEFAULT_CONTACT = {
 class AdminPanel {
     constructor() {
         this.services = this.load(ADMIN_STORAGE_KEYS.services, DEFAULT_SERVICES);
-        this.gallery = this.load(ADMIN_STORAGE_KEYS.gallery, []);
+        this.gallery = [];
         this.about = this.load(ADMIN_STORAGE_KEYS.about, DEFAULT_ABOUT);
         this.contact = this.load(ADMIN_STORAGE_KEYS.contact, DEFAULT_CONTACT);
         this.editingServiceIndex = null;
@@ -278,6 +280,19 @@ class AdminPanel {
             document.getElementById('imageCaption').value = '';
         });
         document.getElementById('uploadImageBtn')?.addEventListener('click', () => this.uploadImage());
+        this.loadGallery();
+    }
+
+    async loadGallery() {
+        try {
+            const response = await fetch('/api/admin/gallery');
+            if (!response.ok) throw new Error(`Server returned ${response.status}`);
+            const data = await response.json();
+            this.gallery = data.images || [];
+        } catch (err) {
+            console.error('Failed to load gallery:', err);
+            this.gallery = [];
+        }
         this.renderGallery();
     }
 
@@ -295,7 +310,8 @@ class AdminPanel {
         // Phone cameras don't always report a usable file.type: iPhones send
         // HEIC/HEIF photos, and some mobile browsers leave file.type blank
         // for camera-roll picks. Fall back to checking the file extension so
-        // those aren't rejected outright.
+        // those aren't rejected outright - prepareImageForUpload() below
+        // re-encodes whatever gets through as a JPEG anyway.
         const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
         const allowedExtensions = /\.(jpe?g|png|webp|heic|heif)$/i;
         const typeOk = allowedTypes.includes(file.type) || (!file.type && allowedExtensions.test(file.name));
@@ -304,47 +320,99 @@ class AdminPanel {
             return;
         }
 
-        const maxBytes = 5 * 1024 * 1024;
+        const maxBytes = 15 * 1024 * 1024;
         if (file.size > maxBytes) {
-            this.showNotification('Image is too large (max 5MB).', 'error');
+            this.showNotification('Image is too large (max 15MB).', 'error');
             return;
         }
 
         const progress = document.getElementById('uploadProgress');
         const fill = document.getElementById('progressFill');
         progress.style.display = 'block';
-        fill.style.width = '0%';
+        fill.style.width = '10%';
 
-        const reader = new FileReader();
-        reader.onprogress = (e) => {
-            if (e.lengthComputable) {
-                fill.style.width = `${Math.round((e.loaded / e.total) * 100)}%`;
-            }
-        };
-        reader.onload = () => {
-            fill.style.width = '100%';
-            this.gallery.push({ id: `${Date.now()}`, src: reader.result, caption });
-            try {
-                this.save(ADMIN_STORAGE_KEYS.gallery, this.gallery);
-            } catch (err) {
-                this.gallery.pop();
+        this.prepareImageForUpload(file, (pct) => { fill.style.width = `${pct}%`; })
+            .then((blob) => this.sendImageUpload(blob, caption))
+            .then(() => {
+                fill.style.width = '100%';
+                fileInput.value = '';
+                captionInput.value = '';
+                document.getElementById('uploadForm').style.display = 'none';
+                setTimeout(() => { progress.style.display = 'none'; }, 400);
+                this.showNotification('Image uploaded!', 'success');
+                return this.loadGallery();
+            })
+            .catch((err) => {
                 progress.style.display = 'none';
-                this.showNotification('Storage is full. Delete an existing gallery image and try again.', 'error');
-                return;
-            }
-            this.renderGallery();
+                this.showNotification(err.message || 'Failed to upload that image. Please try again.', 'error');
+            });
+    }
 
-            fileInput.value = '';
-            captionInput.value = '';
-            document.getElementById('uploadForm').style.display = 'none';
-            setTimeout(() => { progress.style.display = 'none'; }, 400);
-            this.showNotification('Image uploaded!', 'success');
-        };
-        reader.onerror = () => {
-            progress.style.display = 'none';
-            this.showNotification('Failed to read that image. Please try again.', 'error');
-        };
-        reader.readAsDataURL(file);
+    // Decodes the picked file in-browser and re-encodes it as a downscaled
+    // JPEG before it ever reaches the network. This fixes three things at
+    // once: (1) a full-resolution phone photo is several MB - shrinking it
+    // keeps uploads fast and small; (2) HEIC photos don't render in an
+    // <img> tag outside Safari/iOS, so re-encoding to JPEG here means every
+    // visitor's browser can actually display it; (3) a hard 20s timeout
+    // means a stuck decode (e.g. a photo still downloading from iCloud on
+    // "Optimize Storage" iPhones) surfaces as a clear error instead of an
+    // indefinite silent hang.
+    prepareImageForUpload(file, onProgress) {
+        return new Promise((resolve, reject) => {
+            const objectUrl = URL.createObjectURL(file);
+            const img = new Image();
+            let settled = false;
+
+            const timeoutId = setTimeout(() => {
+                if (settled) return;
+                settled = true;
+                URL.revokeObjectURL(objectUrl);
+                reject(new Error("That photo is taking too long to load (it may still be downloading from iCloud). Wait for it to finish downloading and try again."));
+            }, 20000);
+
+            img.onload = () => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timeoutId);
+                URL.revokeObjectURL(objectUrl);
+                onProgress(60);
+
+                const maxDimension = 1600;
+                const scale = Math.min(1, maxDimension / Math.max(img.naturalWidth, img.naturalHeight));
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+                canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob((blob) => {
+                    if (!blob) {
+                        reject(new Error('Failed to process that image. Please try again.'));
+                        return;
+                    }
+                    onProgress(80);
+                    resolve(blob);
+                }, 'image/jpeg', 0.85);
+            };
+            img.onerror = () => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timeoutId);
+                URL.revokeObjectURL(objectUrl);
+                reject(new Error("This browser can't preview that photo format. Try a JPG or PNG, or use Safari on iPhone for HEIC photos."));
+            };
+            img.src = objectUrl;
+        });
+    }
+
+    async sendImageUpload(blob, caption) {
+        const formData = new FormData();
+        formData.append('image', blob, 'photo.jpg');
+        formData.append('caption', caption);
+
+        const response = await fetch('/api/admin/gallery', { method: 'POST', body: formData });
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.error || `Server returned ${response.status}`);
+        }
     }
 
     renderGallery() {
@@ -353,7 +421,7 @@ class AdminPanel {
 
         container.innerHTML = this.gallery.map((item) => `
             <div class="gallery-item">
-                <img class="gallery-image" src="${item.src}" alt="${this.escapeHtml(item.caption)}">
+                <img class="gallery-image" src="${item.url}" alt="${this.escapeHtml(item.caption)}" loading="lazy">
                 <div class="gallery-info">
                     <h4>${this.escapeHtml(item.caption)}</h4>
                     <div class="gallery-actions">
@@ -370,12 +438,18 @@ class AdminPanel {
         this.renderDashboardCounts();
     }
 
-    deleteImage(id) {
+    async deleteImage(id) {
         if (!confirm('Delete this image?')) return;
-        this.gallery = this.gallery.filter((item) => item.id !== id);
-        this.save(ADMIN_STORAGE_KEYS.gallery, this.gallery);
-        this.renderGallery();
-        this.showNotification('Image deleted.', 'success');
+        try {
+            const response = await fetch(`/api/admin/gallery?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error(`Server returned ${response.status}`);
+            this.gallery = this.gallery.filter((item) => item.id !== id);
+            this.renderGallery();
+            this.showNotification('Image deleted.', 'success');
+        } catch (err) {
+            console.error('Failed to delete image:', err);
+            this.showNotification('Failed to delete image. Please try again.', 'error');
+        }
     }
 
     // ---------- about ----------
