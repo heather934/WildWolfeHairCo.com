@@ -132,7 +132,11 @@ class AdminCalendarManager {
             const dateString = this.formatDate(dateObj);
 
             day.className = 'admin-calendar-day';
-            day.textContent = i;
+
+            const dayNumber = document.createElement('span');
+            dayNumber.className = 'admin-day-number';
+            dayNumber.textContent = i;
+            day.appendChild(dayNumber);
 
             if (dateObj.toDateString() === today.toDateString()) {
                 day.classList.add('today');
@@ -142,20 +146,13 @@ class AdminCalendarManager {
                 day.classList.add('other-month');
             } else if (this.bookedDates.includes(dateString)) {
                 day.classList.add('booked');
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'admin-date-action';
-                deleteBtn.textContent = '✕';
-                deleteBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    this.removeBooking(dateString);
-                };
-                day.appendChild(deleteBtn);
+                day.appendChild(this.createDateActionButton('Remove', () => this.removeBooking(dateString)));
             } else if (this.blockedDates.includes(dateString)) {
                 day.classList.add('blocked');
-                day.addEventListener('click', () => this.removeBlocked(dateString));
+                day.appendChild(this.createDateActionButton('Unblock', () => this.removeBlocked(dateString)));
             } else {
                 day.classList.add('available');
-                day.addEventListener('click', () => this.blockDateDirect(dateString));
+                day.appendChild(this.createDateActionButton('Block', () => this.blockDateDirect(dateString)));
             }
 
             grid.appendChild(day);
@@ -179,6 +176,15 @@ class AdminCalendarManager {
         if (blockedCountEl) {
             blockedCountEl.textContent = this.blockedDates.length;
         }
+    }
+
+    createDateActionButton(label, onClick) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'admin-date-toggle';
+        button.textContent = label;
+        button.addEventListener('click', onClick);
+        return button;
     }
 
     async blockDateDirect(dateString) {
