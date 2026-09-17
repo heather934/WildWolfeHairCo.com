@@ -105,6 +105,12 @@
     font-size: 11px;
 }
 
+.admin-calendar-day.blocked:hover {
+    background: var(--warning);
+    color: white;
+    transform: scale(1.05);
+}
+
 .admin-calendar-day.today {
     border: 3px solid var(--olive-green);
 }
@@ -132,75 +138,10 @@
     background: #dc2626;
 }
 
-/* Block Date Form */
-.block-date-form {
-    background: var(--ivory);
-    padding: 20px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    border-left: 4px solid var(--warning);
-}
-
-.block-date-form h4 {
-    color: var(--black);
-    margin-bottom: 15px;
-}
-
-.block-form-group {
-    display: grid;
-    grid-template-columns: 1fr 1fr auto;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-.block-form-group label {
-    display: block;
-    font-weight: 600;
-    color: var(--black);
-    margin-bottom: 5px;
+.admin-calendar-hint {
+    color: #666;
     font-size: 13px;
-}
-
-.block-form-group input,
-.block-form-group textarea {
-    padding: 10px;
-    border: 2px solid #e0e0e0;
-    border-radius: 6px;
-    font-family: 'Poppins', sans-serif;
-    font-size: 13px;
-}
-
-.block-form-group input:focus,
-.block-form-group textarea:focus {
-    outline: none;
-    border-color: var(--olive-green);
-    box-shadow: 0 0 0 3px rgba(107, 126, 91, 0.1);
-}
-
-.block-form-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-}
-
-.block-form-actions button {
-    padding: 8px 15px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.3s;
-    font-size: 13px;
-}
-
-.block-form-actions .btn-success {
-    background: var(--success);
-    color: white;
-}
-
-.block-form-actions .btn-secondary {
-    background: var(--sage);
-    color: var(--black);
+    margin: -5px 0 15px;
 }
 
 /* SMS Notifications Section */
@@ -460,10 +401,6 @@
     .admin-calendar-day-header {
         font-size: 10px;
         padding: 5px;
-    }
-
-    .block-form-group {
-        grid-template-columns: 1fr;
     }
 
     .admin-calendar-legend {

@@ -35,9 +35,6 @@ class AdminCalendarManager {
     }
 
     initializeEventListeners() {
-        document.getElementById('addBlockedDateBtn')?.addEventListener('click', () => this.toggleBlockDateForm());
-        document.getElementById('blockDateForm')?.addEventListener('submit', (e) => this.blockDate(e));
-        document.getElementById('cancelBlockBtn')?.addEventListener('click', () => this.toggleBlockDateForm());
         document.getElementById('prevAdminMonth')?.addEventListener('click', () => this.previousMonth());
         document.getElementById('nextAdminMonth')?.addEventListener('click', () => this.nextMonth());
         document.getElementById('setupSMSBtn')?.addEventListener('click', () => this.setupSMSNotifications());
@@ -155,17 +152,10 @@ class AdminCalendarManager {
                 day.appendChild(deleteBtn);
             } else if (this.blockedDates.includes(dateString)) {
                 day.classList.add('blocked');
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'admin-date-action';
-                deleteBtn.textContent = '✕';
-                deleteBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    this.removeBlocked(dateString);
-                };
-                day.appendChild(deleteBtn);
+                day.addEventListener('click', () => this.removeBlocked(dateString));
             } else {
                 day.classList.add('available');
-                day.addEventListener('click', () => this.blockDateClick(dateObj));
+                day.addEventListener('click', () => this.blockDateDirect(dateString));
             }
 
             grid.appendChild(day);
@@ -191,47 +181,27 @@ class AdminCalendarManager {
         }
     }
 
-    toggleBlockDateForm() {
-        const form = document.getElementById('blockDateForm');
-        form.style.display = form.style.display === 'none' ? 'block' : 'none';
-    }
-
-    blockDateClick(dateObj) {
-        document.getElementById('blockDate').value = this.formatDateDisplay(dateObj);
-        this.toggleBlockDateForm();
-    }
-
-    async blockDate(e) {
-        e.preventDefault();
-        const dateString = document.getElementById('blockDate').value;
-        const reason = document.getElementById('blockReason').value;
-
-        if (!dateString) {
-            alert('Please select a date');
+    async blockDateDirect(dateString) {
+        if (!confirm(`Block ${dateString}? Clients won't be able to book it.`)) {
             return;
         }
-
-        const date = new Date(dateString);
-        const formattedDate = this.formatDate(date);
 
         try {
             const response = await fetch('/api/admin/block', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ date: formattedDate, reason }),
+                body: JSON.stringify({ date: dateString }),
             });
 
             if (!response.ok) {
                 throw new Error(`Server returned ${response.status}`);
             }
 
-            if (!this.blockedDates.includes(formattedDate)) {
-                this.blockedDates.push(formattedDate);
+            if (!this.blockedDates.includes(dateString)) {
+                this.blockedDates.push(dateString);
             }
             this.renderAdminCalendar();
-            document.getElementById('blockDateForm').reset();
-            this.toggleBlockDateForm();
-            this.showNotification('Date blocked successfully!', 'success');
+            this.showNotification('Date blocked!', 'success');
         } catch (error) {
             console.error('Failed to block date:', error);
             this.showNotification('Failed to block date. Please try again.', 'error');
@@ -301,11 +271,6 @@ class AdminCalendarManager {
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
-    }
-
-    formatDateDisplay(date) {
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        return date.toLocaleDateString('en-US', options);
     }
 
     setupSMSNotifications() {
