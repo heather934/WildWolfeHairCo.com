@@ -89,8 +89,9 @@
             <div class="admin-calendar-section">
                 <div class="section-header">
                     <h3>Your Calendar</h3>
-                    <button class="btn-primary" id="addBlockedDateBtn">🔒 Block Date</button>
                 </div>
+
+                <p class="admin-calendar-hint">Tap a date's button to block it, unblock it, or remove a booking.</p>
 
                 <div class="admin-calendar-legend">
                     <div class="admin-legend-item">
@@ -111,27 +112,6 @@
                 </div>
 
                 <div class="admin-calendar-grid" id="adminCalendarGrid"></div>
-
-                <!-- Block Date Form -->
-                <div class="block-date-form" id="blockDateForm" style="display: none;">
-                    <h4>Block Date</h4>
-                    <form>
-                        <div class="block-form-group">
-                            <div>
-                                <label for="blockDate">Date:</label>
-                                <input type="date" id="blockDate" required>
-                            </div>
-                            <div>
-                                <label for="blockReason">Reason (optional):</label>
-                                <input type="text" id="blockReason" placeholder="e.g., Personal, Travel, etc.">
-                            </div>
-                            <div class="block-form-actions">
-                                <button type="submit" class="btn-success">Block Date</button>
-                                <button type="button" class="btn-secondary" id="cancelBlockBtn">Cancel</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
             </div>
 
             <!-- Booking Information -->
@@ -169,7 +149,7 @@
                 <div class="form-group">
                     <label for="imageFile">Select Image:</label>
                     <input type="file" id="imageFile" accept="image/*" required>
-                    <small>Supported: JPG, PNG, WebP, HEIC (iPhone) — Max 5MB</small>
+                    <small>Supported: JPG, PNG, WebP, HEIC (iPhone) — Max 15MB</small>
                 </div>
                 <div class="form-group">
                     <label for="imageCaption">Image Caption:</label>
