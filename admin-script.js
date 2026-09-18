@@ -6,11 +6,15 @@
 // homepage (gallery-script.js) reads the same data via functions/api/gallery/*
 // - same pattern as Calendar/Booking and Messages.
 //
-// Services / About / Contact Info have no content backend yet, so those
-// still save to this browser's localStorage. That means edits there are a
-// draft Zoee can review and reuse, but won't change the live site by
-// themselves; the matching text in index.html still needs to be updated to
-// publish a change.
+// Contact Info is also fully live: functions/api/admin/content.js reads/
+// writes the "siteContact" key in the same AVAILABILITY KV namespace, and
+// the public homepage reads it back via functions/api/site-content.js.
+//
+// Services / About have no content backend yet, so those still save to
+// this browser's localStorage. That means edits there are a draft Zoee can
+// review and reuse, but won't change the live site by themselves; the
+// matching text in index.html still needs to be updated to publish a
+// change.
 
 const ADMIN_STORAGE_KEYS = {
     services: 'admin_services',
@@ -501,7 +505,42 @@ class AdminPanel {
 
     // ---------- contact info ----------
 
-    initContact() {
+    async initContact() {
+        this.renderContactForm();
+
+        // localStorage is only a same-browser fallback for instant pre-fill;
+        // the server (shared KV, same as Bookings/Messages) is the source of
+        // truth so the homepage and every admin session agree.
+        try {
+            const response = await fetch('/api/admin/content');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.contact && Object.keys(data.contact).length) {
+                    this.contact = { ...DEFAULT_CONTACT, ...data.contact };
+                    this.renderContactForm();
+                }
+            }
+        } catch (err) {
+            console.error('Failed to load contact info from server:', err);
+        }
+
+        document.getElementById('saveContactBtn')?.addEventListener('click', () => {
+            this.contact.email = document.getElementById('contactEmail').value.trim();
+            this.contact.phone = document.getElementById('contactPhone').value.trim();
+            this.contact.location = document.getElementById('contactLocation').value.trim();
+            this.contact.responseMessage = document.getElementById('contactMessage').value.trim();
+            this.persistContact('Contact info saved!');
+        });
+
+        document.getElementById('saveSocialBtn')?.addEventListener('click', () => {
+            this.contact.instagram = document.getElementById('instagramLink').value.trim();
+            this.contact.facebook = document.getElementById('facebookLink').value.trim();
+            this.contact.pinterest = document.getElementById('pinterestLink').value.trim();
+            this.persistContact('Social links saved!');
+        });
+    }
+
+    renderContactForm() {
         document.getElementById('contactEmail').value = this.contact.email;
         document.getElementById('contactPhone').value = this.contact.phone;
         document.getElementById('contactLocation').value = this.contact.location;
@@ -509,23 +548,25 @@ class AdminPanel {
         document.getElementById('instagramLink').value = this.contact.instagram;
         document.getElementById('facebookLink').value = this.contact.facebook;
         document.getElementById('pinterestLink').value = this.contact.pinterest;
+    }
 
-        document.getElementById('saveContactBtn')?.addEventListener('click', () => {
-            this.contact.email = document.getElementById('contactEmail').value.trim();
-            this.contact.phone = document.getElementById('contactPhone').value.trim();
-            this.contact.location = document.getElementById('contactLocation').value.trim();
-            this.contact.responseMessage = document.getElementById('contactMessage').value.trim();
+    async persistContact(successMessage) {
+        try {
+            const response = await fetch('/api/admin/content', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.contact),
+            });
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.error || `Server returned ${response.status}`);
+            }
             this.save(ADMIN_STORAGE_KEYS.contact, this.contact);
-            this.showNotification('Contact info saved!', 'success');
-        });
-
-        document.getElementById('saveSocialBtn')?.addEventListener('click', () => {
-            this.contact.instagram = document.getElementById('instagramLink').value.trim();
-            this.contact.facebook = document.getElementById('facebookLink').value.trim();
-            this.contact.pinterest = document.getElementById('pinterestLink').value.trim();
-            this.save(ADMIN_STORAGE_KEYS.contact, this.contact);
-            this.showNotification('Social links saved!', 'success');
-        });
+            this.showNotification(successMessage, 'success');
+        } catch (err) {
+            console.error('Failed to save contact info:', err);
+            this.showNotification('Failed to save to the server. Check your connection and try again.', 'error');
+        }
     }
 
     // ---------- messages (real - backed by KV via /api/admin/messages) ----------
