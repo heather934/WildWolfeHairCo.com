@@ -28,6 +28,38 @@ window.onloadTurnstileCallback = function () {
     }
 };
 
+// Contact info (email, location, social links) - editable from the admin
+// panel's Contact Info tab, stored server-side so it's live for everyone.
+// The HTML has the last-published values baked in as a fallback in case
+// this fetch fails or hasn't run yet.
+fetch('/api/site-content')
+    .then((response) => (response.ok ? response.json() : null))
+    .then((data) => {
+        const contact = data && data.contact;
+        if (!contact) return;
+
+        const emailEl = document.getElementById('contactEmailText');
+        if (emailEl && contact.email) emailEl.textContent = contact.email;
+
+        const locationEl = document.getElementById('contactLocationText');
+        if (locationEl && contact.location) locationEl.textContent = contact.location;
+
+        const socialLinks = {
+            socialInstagram: contact.instagram,
+            socialFacebook: contact.facebook,
+            socialPinterest: contact.pinterest,
+        };
+        for (const [id, url] of Object.entries(socialLinks)) {
+            const link = document.getElementById(id);
+            if (link && url) {
+                link.href = url;
+                link.target = '_blank';
+                link.rel = 'noopener';
+            }
+        }
+    })
+    .catch((error) => console.error('Failed to load live contact info:', error));
+
 // Contact form handling
 const contactForm = document.getElementById('contactForm');
 // Same Worker the booking calendar uses to send email - see calendar-script.js
