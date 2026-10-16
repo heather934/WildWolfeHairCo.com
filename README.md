@@ -81,14 +81,26 @@ The "Book Now" section on the homepage (`calendar-script.js`) and the admin pane
 - A date a client books on the public calendar immediately shows as booked in the admin panel.
 - A date Zoee blocks (or a booking she removes) in the admin panel immediately becomes unavailable/available again on the public calendar.
 
-The Worker also sends the booking notification email via MailChannels once a booking is saved, and stores the full booking details (name/email/phone/message, not just the date) under a `bookings` KV key. That full detail is never returned by the public `GET /availability` endpoint (only bare date strings are) — it's only readable through `/api/admin/bookings`, an Access-protected Pages Function, and is what powers the "Bookings Overview" list in the admin Calendar tab.
+The Worker also sends a booking notification email (via Resend - see "Email Notifications" below) once a booking is saved, and stores the full booking details (name/email/phone/message, not just the date) under a `bookings` KV key. That full detail is never returned by the public `GET /availability` endpoint (only bare date strings are) — it's only readable through `/api/admin/bookings`, an Access-protected Pages Function, and is what powers the "Bookings Overview" list in the admin Calendar tab.
 
 ### Redeploying the Worker
 If you change `cloudflare-worker.js`, redeploy it to Cloudflare (Workers & Pages > `send-booking-email` > upload the updated script) so the live Worker matches the repo. The KV binding (`AVAILABILITY`) must stay attached across redeploys.
 
 ## Contact Messages
 
-The homepage "Get In Touch" form (`script.js`) posts to the same Worker's `POST /messages` route, which stores the message in the `AVAILABILITY` KV namespace (`contactMessages` key) and emails both admins via MailChannels — the same pattern as bookings. The admin panel's Messages tab reads/deletes/marks-read through `/api/admin/messages` (Access-protected, `functions/api/admin/messages.js`).
+The homepage "Get In Touch" form (`script.js`) posts to the same Worker's `POST /messages` route, which stores the message in the `AVAILABILITY` KV namespace (`contactMessages` key) and emails both admins via Resend — the same pattern as bookings. The admin panel's Messages tab reads/deletes/marks-read through `/api/admin/messages` (Access-protected, `functions/api/admin/messages.js`).
+
+## Email Notifications
+
+Both booking confirmations and contact-form messages email `zoee.burley@yahoo.com` and `h.m.ward1846@gmail.com` (the `ADMIN_EMAILS` list in `cloudflare-worker.js`) via [Resend](https://resend.com)'s Email API. This replaced MailChannels, whose free "send email from a Cloudflare Worker" integration was permanently shut down on 2024-08-31 — the original code silently failed every single send from day one, since it called a dead endpoint and only logged the failure to the console.
+
+**Setup required on the Cloudflare account** (one-time):
+1. Sign up at [resend.com](https://resend.com) and add `wildwolfehairco.com` as a sending domain.
+2. Add the DNS records Resend gives you (SPF/DKIM) to the `wildwolfehairco.com` zone in Cloudflare DNS.
+3. Create an API key in Resend's dashboard.
+4. Add it as a secret on the `send-booking-email` Worker: Workers & Pages > `send-booking-email` > Settings > Variables and Secrets > add `RESEND_API_KEY`.
+
+Without that secret, bookings and messages still save and show up in the admin panel fine — they just won't trigger an email, and the Worker logs `RESEND_API_KEY is not configured` per attempted send. A failure for one admin's address doesn't block the other's (each recipient is attempted independently), and a failed send never blocks the booking/message itself from saving.
 
 ## Admin Panel Sections
 

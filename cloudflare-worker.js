@@ -3,7 +3,7 @@
  * Handles two things:
  *   1. Availability API backed by a KV namespace (shared source of truth for
  *      both the public booking calendar and the admin panel)
- *   2. Sending booking notification emails via MailChannels
+ *   2. Sending booking notification emails via Resend
  *
  * Deploy this worker to your Cloudflare account with a KV namespace bound
  * as `AVAILABILITY` (Settings > Variables > KV Namespace Bindings).
@@ -14,8 +14,13 @@
  * 3. Replace the default code with this entire script
  * 4. Name it "send-booking-email"
  * 5. Create a KV namespace and bind it to this worker as `AVAILABILITY`
- * 6. Click "Deploy"
- * 7. Copy the Worker URL (format: https://send-booking-email.yourusername.workers.dev)
+ * 6. Add a `RESEND_API_KEY` secret (Settings > Variables and Secrets) -
+ *    sign up at resend.com, verify wildwolfehairco.com as a sending domain
+ *    (Resend gives you the DNS records to add), then create an API key.
+ *    Without this secret, bookings/messages still save fine but no
+ *    notification email goes out (see sendEmailViaResend below).
+ * 7. Click "Deploy"
+ * 8. Copy the Worker URL (format: https://send-booking-email.yourusername.workers.dev)
  *
  * API (all public, unauthenticated - keep it that way only for read-only or
  * additive operations a site visitor is meant to be able to do):
@@ -206,23 +211,10 @@ async function handleBookDate(data, env, corsHeaders, ip) {
   bookings.push(bookingData);
   await env.AVAILABILITY.put('bookings', JSON.stringify(bookings));
 
-  try {
-    const emailHtml = buildBookingEmailHTML(bookingData);
-    await Promise.all(
-      ADMIN_EMAILS.map((admin) =>
-        sendEmailViaMailChannels({
-          to: admin.email,
-          subject: `🎉 New Booking: ${name} - ${date}`,
-          html: emailHtml,
-          from: { email: 'bookings@wildwolfehaircostyling.com', name: 'Zoee - Bridal Hair Styling' },
-        })
-      )
-    );
-  } catch (emailError) {
-    // The booking itself is already saved; a failed notification email
-    // shouldn't make the booking appear to fail for the client.
-    console.error('Booking saved but notification email failed:', emailError);
-  }
+  // The booking itself is already saved above; a failed notification email
+  // shouldn't make the booking appear to fail for the client, so this never
+  // throws - it just logs per-recipient failures.
+  await notifyAdmins(env, `🎉 New Booking: ${name} - ${date}`, buildBookingEmailHTML(bookingData));
 
   return jsonResponse({ success: true, message: 'Booking confirmed' }, 200, corsHeaders);
 }
@@ -257,65 +249,73 @@ async function handleContactMessage(data, env, corsHeaders, ip) {
   messages.unshift(messageData);
   await env.AVAILABILITY.put('contactMessages', JSON.stringify(messages));
 
-  try {
-    const emailHtml = buildContactMessageEmailHTML(messageData);
-    await Promise.all(
-      ADMIN_EMAILS.map((admin) =>
-        sendEmailViaMailChannels({
-          to: admin.email,
-          subject: `💬 New Contact Message: ${name}`,
-          html: emailHtml,
-          from: { email: 'bookings@wildwolfehaircostyling.com', name: 'Zoee - Bridal Hair Styling' },
-        })
-      )
-    );
-  } catch (emailError) {
-    console.error('Message saved but notification email failed:', emailError);
-  }
+  await notifyAdmins(env, `💬 New Contact Message: ${name}`, buildContactMessageEmailHTML(messageData));
 
   return jsonResponse({ success: true, message: 'Message sent' }, 200, corsHeaders);
 }
 
-async function sendEmailViaMailChannels(data) {
+// Emails every admin in ADMIN_EMAILS, never throwing - a failed or
+// unconfigured notification email should never make a booking or a contact
+// message appear to fail for the site visitor who submitted it. Each
+// recipient is attempted independently (Promise.allSettled) and failures
+// are logged individually, so one bad address doesn't hide whether the
+// other admin got notified.
+async function notifyAdmins(env, subject, html) {
+  const results = await Promise.allSettled(
+    ADMIN_EMAILS.map((admin) =>
+      sendEmailViaResend(env, {
+        to: admin.email,
+        subject,
+        html,
+        from: { email: 'bookings@wildwolfehairco.com', name: 'Zoee - Bridal Hair Styling' },
+      })
+    )
+  );
+
+  results.forEach((result, i) => {
+    if (result.status === 'rejected') {
+      console.error(`Notification email to ${ADMIN_EMAILS[i].email} failed:`, result.reason);
+    }
+  });
+}
+
+// Sends via Resend's Email API (api.resend.com). MailChannels' free
+// send-email-from-a-Worker integration (what this used to call) was shut
+// down on 2024-08-31, so this needs its own API key - see the
+// RESEND_API_KEY setup note in the file header.
+async function sendEmailViaResend(env, data) {
   const {
     to,
     subject,
     html,
-    text = '',
-    from = { email: 'bookings@zoee-hair.com', name: 'Zoee - Bridal Hair Styling' },
+    from = { email: 'bookings@wildwolfehairco.com', name: 'Zoee - Bridal Hair Styling' },
   } = data;
 
-  const endpoint = 'https://api.mailchannels.net/tx/v1/send';
-
-  const toArray = Array.isArray(to) ? to : [{ email: to }];
-
-  const payload = {
-    personalizations: [{ to: toArray }],
-    from: typeof from === 'string' ? { email: from } : from,
-    subject,
-    content: [{ type: 'text/html', value: html }],
-  };
-
-  if (text) {
-    payload.content.push({ type: 'text/plain', value: text });
+  if (!env.RESEND_API_KEY) {
+    throw new Error('RESEND_API_KEY is not configured');
   }
 
-  const response = await fetch(endpoint, {
+  const toArray = Array.isArray(to) ? to : [to];
+  const fromHeader = typeof from === 'string' ? from : `${from.name} <${from.email}>`;
+
+  const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    headers: {
+      'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+      // Resend rejects requests with no User-Agent (403); fetch() inside a
+      // Worker doesn't set one by default the way curl/Node do.
+      'User-Agent': 'wild-wolfe-hair-co-worker/1.0',
+    },
+    body: JSON.stringify({ from: fromHeader, to: toArray, subject, html }),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`MailChannels error: ${response.status} - ${errorText}`);
+    throw new Error(`Resend error: ${response.status} - ${errorText}`);
   }
 
-  return {
-    success: true,
-    message: 'Email sent successfully',
-    timestamp: new Date().toISOString(),
-  };
+  return response.json();
 }
 
 function buildBookingEmailHTML(bookingData) {
