@@ -3,7 +3,8 @@
  * Handles two things:
  *   1. Availability API backed by a KV namespace (shared source of truth for
  *      both the public booking calendar and the admin panel)
- *   2. Sending booking notification emails via MailChannels
+ *   2. Emailing Zoee about new bookings and contact messages via EmailJS
+ *      (see sendEmailJS below for the settings it needs)
  *
  * Deploy this worker to your Cloudflare account with a KV namespace bound
  * as `AVAILABILITY` (Settings > Variables > KV Namespace Bindings).
@@ -46,19 +47,6 @@ const ADMIN_EMAILS = [
   { email: 'zoee.burley@yahoo.com', name: 'Zoee Burley' },
   { email: 'h.m.ward1846@gmail.com', name: 'Admin' },
 ];
-
-// Booking/message fields come straight from site visitors and get
-// interpolated into HTML email bodies below - escape them so a name or
-// message like `<img src=x onerror=...>` can't inject markup into the
-// notification email.
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
 
 export default {
   async fetch(request, env) {
@@ -207,17 +195,14 @@ async function handleBookDate(data, env, corsHeaders, ip) {
   await env.AVAILABILITY.put('bookings', JSON.stringify(bookings));
 
   try {
-    const emailHtml = buildBookingEmailHTML(bookingData);
-    await Promise.all(
-      ADMIN_EMAILS.map((admin) =>
-        sendEmailViaMailChannels({
-          to: admin.email,
-          subject: `🎉 New Booking: ${name} - ${date}`,
-          html: emailHtml,
-          from: { email: 'bookings@wildwolfehaircostyling.com', name: 'Zoee - Bridal Hair Styling' },
-        })
-      )
-    );
+    await sendEmailJS(env, 'EMAILJS_BOOKING_TEMPLATE_ID', {
+      name,
+      email,
+      phone: bookingData.phone,
+      date,
+      service,
+      message: bookingData.message,
+    });
   } catch (emailError) {
     // The booking itself is already saved; a failed notification email
     // shouldn't make the booking appear to fail for the client.
@@ -258,17 +243,13 @@ async function handleContactMessage(data, env, corsHeaders, ip) {
   await env.AVAILABILITY.put('contactMessages', JSON.stringify(messages));
 
   try {
-    const emailHtml = buildContactMessageEmailHTML(messageData);
-    await Promise.all(
-      ADMIN_EMAILS.map((admin) =>
-        sendEmailViaMailChannels({
-          to: admin.email,
-          subject: `💬 New Contact Message: ${name}`,
-          html: emailHtml,
-          from: { email: 'bookings@wildwolfehaircostyling.com', name: 'Zoee - Bridal Hair Styling' },
-        })
-      )
-    );
+    await sendEmailJS(env, 'EMAILJS_CONTACT_TEMPLATE_ID', {
+      name,
+      email,
+      phone: messageData.phone,
+      wedding_date: messageData.weddingDate,
+      message: messageData.message,
+    });
   } catch (emailError) {
     console.error('Message saved but notification email failed:', emailError);
   }
@@ -276,336 +257,49 @@ async function handleContactMessage(data, env, corsHeaders, ip) {
   return jsonResponse({ success: true, message: 'Message sent' }, 200, corsHeaders);
 }
 
-async function sendEmailViaMailChannels(data) {
-  const {
-    to,
-    subject,
-    html,
-    text = '',
-    from = { email: 'bookings@zoee-hair.com', name: 'Zoee - Bridal Hair Styling' },
-  } = data;
-
-  const endpoint = 'https://api.mailchannels.net/tx/v1/send';
-
-  const toArray = Array.isArray(to) ? to : [{ email: to }];
-
-  const payload = {
-    personalizations: [{ to: toArray }],
-    from: typeof from === 'string' ? { email: from } : from,
-    subject,
-    content: [{ type: 'text/html', value: html }],
-  };
-
-  if (text) {
-    payload.content.push({ type: 'text/plain', value: text });
+// Sends a notification email through EmailJS's REST API
+// (https://www.emailjs.com/docs/rest-api/send/). Called server-side from this
+// Worker - not from the browser - so the private key stays a Worker secret
+// and every email has already passed Turnstile + the rate limit above.
+//
+// Required Worker settings (Workers & Pages > send-booking-email > Settings >
+// Variables and Secrets):
+//   EMAILJS_SERVICE_ID            (plain text) e.g. service_abc123
+//   EMAILJS_PUBLIC_KEY            (plain text) Account > General > Public Key
+//   EMAILJS_PRIVATE_KEY           (SECRET)     Account > General > Private Key
+//   EMAILJS_CONTACT_TEMPLATE_ID   (plain text) template for contact messages
+//   EMAILJS_BOOKING_TEMPLATE_ID   (plain text) template for bookings (optional)
+// and in EmailJS, Account > Security > "Allow EmailJS API for non-browser
+// applications" must be ON.
+//
+// Template variables are escaped by EmailJS when used as {{name}}, so
+// visitor-supplied text can't inject markup into the email.
+async function sendEmailJS(env, templateVar, templateParams) {
+  const missing = ['EMAILJS_SERVICE_ID', 'EMAILJS_PUBLIC_KEY', 'EMAILJS_PRIVATE_KEY', templateVar].filter((k) => !env[k]);
+  if (missing.length) {
+    throw new Error(`EmailJS is not configured - missing: ${missing.join(', ')}`);
   }
 
-  const response = await fetch(endpoint, {
+  const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      service_id: env.EMAILJS_SERVICE_ID,
+      template_id: env[templateVar],
+      user_id: env.EMAILJS_PUBLIC_KEY,
+      accessToken: env.EMAILJS_PRIVATE_KEY,
+      template_params: {
+        // Use {{to_email}} as the template's "To Email" to keep the
+        // recipient list here in ADMIN_EMAILS; a fixed address in the
+        // template also works and simply ignores this.
+        to_email: ADMIN_EMAILS.map((a) => a.email).join(', '),
+        ...templateParams,
+      },
+    }),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`MailChannels error: ${response.status} - ${errorText}`);
+    throw new Error(`EmailJS error: ${response.status} - ${errorText}`);
   }
-
-  return {
-    success: true,
-    message: 'Email sent successfully',
-    timestamp: new Date().toISOString(),
-  };
-}
-
-function buildBookingEmailHTML(bookingData) {
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            font-family: 'Lato', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f5f3f0;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 3px solid #d4af37;
-        }
-        .header h1 {
-            color: #6b7e5b;
-            margin: 0;
-            font-size: 28px;
-        }
-        .header p {
-            color: #a8b8a8;
-            margin: 5px 0 0 0;
-            font-size: 14px;
-        }
-        .booking-details {
-            background-color: #f5f3f0;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 25px;
-        }
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .detail-row:last-child {
-            border-bottom: none;
-        }
-        .detail-label {
-            font-weight: 600;
-            color: #6b7e5b;
-            width: 40%;
-        }
-        .detail-value {
-            color: #333;
-            width: 60%;
-            text-align: right;
-        }
-        .message-section {
-            margin-top: 25px;
-            padding-top: 20px;
-            border-top: 1px solid #e0e0e0;
-        }
-        .message-section h3 {
-            color: #6b7e5b;
-            margin: 0 0 10px 0;
-            font-size: 16px;
-        }
-        .message-text {
-            color: #666;
-            background-color: #f9f9f9;
-            padding: 15px;
-            border-radius: 6px;
-            border-left: 4px solid #d4af37;
-        }
-        .footer {
-            text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e0e0e0;
-            color: #999;
-            font-size: 12px;
-        }
-        .action-button {
-            display: inline-block;
-            margin-top: 20px;
-            padding: 12px 30px;
-            background-color: #6b7e5b;
-            color: white;
-            text-decoration: none;
-            border-radius: 6px;
-            text-align: center;
-        }
-        .action-button:hover {
-            background-color: #5a6f4c;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🎉 New Booking!</h1>
-            <p>A client has requested a booking appointment</p>
-        </div>
-
-        <div class="booking-details">
-            <div class="detail-row">
-                <span class="detail-label">👤 Client Name:</span>
-                <span class="detail-value"><strong>${escapeHtml(bookingData.name)}</strong></span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">📧 Email:</span>
-                <span class="detail-value"><strong>${escapeHtml(bookingData.email)}</strong></span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">📱 Phone:</span>
-                <span class="detail-value"><strong>${escapeHtml(bookingData.phone)}</strong></span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">📅 Booking Date:</span>
-                <span class="detail-value"><strong>${escapeHtml(bookingData.date)}</strong></span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">🎯 Service:</span>
-                <span class="detail-value"><strong>${escapeHtml(bookingData.service)}</strong></span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">⏰ Submitted:</span>
-                <span class="detail-value"><strong>${bookingData.bookingDate}</strong></span>
-            </div>
-        </div>
-
-        ${bookingData.message ? `
-        <div class="message-section">
-            <h3>📝 Client's Message:</h3>
-            <div class="message-text">
-                ${escapeHtml(bookingData.message).replace(/\n/g, '<br>')}
-            </div>
-        </div>
-        ` : ''}
-
-        <div style="text-align: center;">
-            <a href="https://wildwolfehairco.com/admin.html" class="action-button">View in Admin Panel</a>
-        </div>
-
-        <div class="footer">
-            <p>This is an automated booking notification from Zoee's Bridal Hair Styling website.</p>
-            <p>© 2026 Zoee - Bridal Hair Styling. All rights reserved.</p>
-        </div>
-    </div>
-</body>
-</html>
-        `;
-}
-
-function buildContactMessageEmailHTML(messageData) {
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            font-family: 'Lato', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f5f3f0;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 3px solid #d4af37;
-        }
-        .header h1 {
-            color: #6b7e5b;
-            margin: 0;
-            font-size: 28px;
-        }
-        .details {
-            background-color: #f5f3f0;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 25px;
-        }
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .detail-row:last-child {
-            border-bottom: none;
-        }
-        .detail-label {
-            font-weight: 600;
-            color: #6b7e5b;
-            width: 40%;
-        }
-        .detail-value {
-            color: #333;
-            width: 60%;
-            text-align: right;
-        }
-        .message-text {
-            color: #666;
-            background-color: #f9f9f9;
-            padding: 15px;
-            border-radius: 6px;
-            border-left: 4px solid #d4af37;
-            margin-top: 20px;
-        }
-        .action-button {
-            display: inline-block;
-            margin-top: 20px;
-            padding: 12px 30px;
-            background-color: #6b7e5b;
-            color: white;
-            text-decoration: none;
-            border-radius: 6px;
-            text-align: center;
-        }
-        .footer {
-            text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e0e0e0;
-            color: #999;
-            font-size: 12px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>💬 New Contact Message</h1>
-            <p>Someone reached out through the website contact form</p>
-        </div>
-
-        <div class="details">
-            <div class="detail-row">
-                <span class="detail-label">👤 Name:</span>
-                <span class="detail-value"><strong>${escapeHtml(messageData.name)}</strong></span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">📧 Email:</span>
-                <span class="detail-value"><strong>${escapeHtml(messageData.email)}</strong></span>
-            </div>
-            ${messageData.phone ? `
-            <div class="detail-row">
-                <span class="detail-label">📱 Phone:</span>
-                <span class="detail-value"><strong>${escapeHtml(messageData.phone)}</strong></span>
-            </div>
-            ` : ''}
-            ${messageData.weddingDate ? `
-            <div class="detail-row">
-                <span class="detail-label">💍 Wedding Date:</span>
-                <span class="detail-value"><strong>${escapeHtml(messageData.weddingDate)}</strong></span>
-            </div>
-            ` : ''}
-        </div>
-
-        ${messageData.message ? `<div class="message-text">${escapeHtml(messageData.message).replace(/\n/g, '<br>')}</div>` : ''}
-
-        <div style="text-align: center;">
-            <a href="https://wildwolfehairco.com/admin.html" class="action-button">View in Admin Panel</a>
-        </div>
-
-        <div class="footer">
-            <p>This is an automated notification from Zoee's Bridal Hair Styling website.</p>
-            <p>© 2026 Zoee - Bridal Hair Styling. All rights reserved.</p>
-        </div>
-    </div>
-</body>
-</html>
-        `;
 }

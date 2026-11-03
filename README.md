@@ -81,14 +81,35 @@ The "Book Now" section on the homepage (`calendar-script.js`) and the admin pane
 - A date a client books on the public calendar immediately shows as booked in the admin panel.
 - A date Zoee blocks (or a booking she removes) in the admin panel immediately becomes unavailable/available again on the public calendar.
 
-The Worker also sends the booking notification email via MailChannels once a booking is saved, and stores the full booking details (name/email/phone/message, not just the date) under a `bookings` KV key. That full detail is never returned by the public `GET /availability` endpoint (only bare date strings are) — it's only readable through `/api/admin/bookings`, an Access-protected Pages Function, and is what powers the "Bookings Overview" list in the admin Calendar tab.
+The Worker also sends the booking notification email via EmailJS (see "Email Notifications" below) once a booking is saved, and stores the full booking details (name/email/phone/message, not just the date) under a `bookings` KV key. That full detail is never returned by the public `GET /availability` endpoint (only bare date strings are) — it's only readable through `/api/admin/bookings`, an Access-protected Pages Function, and is what powers the "Bookings Overview" list in the admin Calendar tab.
 
 ### Redeploying the Worker
 If you change `cloudflare-worker.js`, redeploy it to Cloudflare (Workers & Pages > `send-booking-email` > upload the updated script) so the live Worker matches the repo. The KV binding (`AVAILABILITY`) must stay attached across redeploys.
 
 ## Contact Messages
 
-The homepage "Get In Touch" form (`script.js`) posts to the same Worker's `POST /messages` route, which stores the message in the `AVAILABILITY` KV namespace (`contactMessages` key) and emails both admins via MailChannels — the same pattern as bookings. The admin panel's Messages tab reads/deletes/marks-read through `/api/admin/messages` (Access-protected, `functions/api/admin/messages.js`).
+The homepage "Get In Touch" form (`script.js`) posts to the same Worker's `POST /messages` route, which stores the message in the `AVAILABILITY` KV namespace (`contactMessages` key) and emails both admins via EmailJS — the same pattern as bookings. The admin panel's Messages tab reads/deletes/marks-read through `/api/admin/messages` (Access-protected, `functions/api/admin/messages.js`).
+
+## Email Notifications
+
+New contact messages and bookings are emailed to everyone in `ADMIN_EMAILS` (top of `cloudflare-worker.js`) through [EmailJS](https://www.emailjs.com/), called server-side from the Worker so the private key is never exposed in the site's public JS. A failed email never blocks the message/booking itself — it's still saved and visible in the admin panel, and the error shows in the Worker's Logs.
+
+**EmailJS setup**
+- *Email Services*: a connected sending account (e.g. Gmail). Its Service ID goes in `EMAILJS_SERVICE_ID`.
+- *Email Templates*: one for contact messages (variables `{{name}}`, `{{email}}`, `{{phone}}`, `{{wedding_date}}`, `{{message}}`) and optionally one for bookings (`{{name}}`, `{{email}}`, `{{phone}}`, `{{date}}`, `{{service}}`, `{{message}}`). Set **To Email** to `{{to_email}}` (filled from `ADMIN_EMAILS`) or fixed addresses, and **Reply To** to `{{email}}` so replying goes straight to the client.
+- *Account > Security*: turn on **Allow EmailJS API for non-browser applications**.
+
+**Worker variables** (Workers & Pages > `send-booking-email` > Settings > Variables and Secrets):
+
+| Name | Type | Value |
+| --- | --- | --- |
+| `EMAILJS_SERVICE_ID` | Text | Service ID, e.g. `service_abc123` |
+| `EMAILJS_PUBLIC_KEY` | Text | Account > General > Public Key |
+| `EMAILJS_PRIVATE_KEY` | **Secret** | Account > General > Private Key |
+| `EMAILJS_CONTACT_TEMPLATE_ID` | Text | Contact message template ID |
+| `EMAILJS_BOOKING_TEMPLATE_ID` | Text | Booking template ID (optional — without it, booking emails are skipped and logged) |
+
+The free EmailJS plan allows 200 emails/month; each message/booking uses one.
 
 ## Admin Panel Sections
 
