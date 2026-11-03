@@ -43,9 +43,10 @@
  * namespace, to keep them from being scripted/spammed.
  */
 
-// EmailJS template IDs aren't secret, so they live here; a Worker variable of
+// EmailJS IDs and the public key aren't secret, so they live here; a Worker variable of
 // the same name, if set, overrides the value below.
 const EMAILJS_DEFAULTS = {
+  EMAILJS_PUBLIC_KEY: 'MvoE6IVKYaAJ4FbPu',
   EMAILJS_CONTACT_TEMPLATE_ID: 'template_zuoas3f', // "Contact Us" template
 };
 
@@ -271,7 +272,7 @@ async function handleContactMessage(data, env, corsHeaders, ip) {
 // Required Worker settings (Workers & Pages > send-booking-email > Settings >
 // Variables and Secrets):
 //   EMAILJS_SERVICE_ID            (plain text) e.g. service_abc123
-//   EMAILJS_PUBLIC_KEY            (plain text) Account > General > Public Key
+//   EMAILJS_PUBLIC_KEY            (plain text) optional - defaults to EMAILJS_DEFAULTS
 //   EMAILJS_PRIVATE_KEY           (SECRET)     Account > General > Private Key
 //   EMAILJS_CONTACT_TEMPLATE_ID   (plain text) optional - defaults to EMAILJS_DEFAULTS
 //   EMAILJS_BOOKING_TEMPLATE_ID   (plain text) template for bookings (optional)
@@ -293,7 +294,7 @@ async function sendEmailJS(env, templateVar, templateParams) {
     body: JSON.stringify({
       service_id: env.EMAILJS_SERVICE_ID,
       template_id: setting(templateVar),
-      user_id: env.EMAILJS_PUBLIC_KEY,
+      user_id: setting('EMAILJS_PUBLIC_KEY'),
       accessToken: env.EMAILJS_PRIVATE_KEY,
       template_params: {
         // Use {{to_email}} as the template's "To Email" to keep the
