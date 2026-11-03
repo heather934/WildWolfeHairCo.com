@@ -46,7 +46,7 @@
 // EmailJS IDs and the public key aren't secret, so they live here; a Worker variable of
 // the same name, if set, overrides the value below.
 const EMAILJS_DEFAULTS = {
-  EMAILJS_SERVICE_ID: 'service_bp3k18e',
+  EMAILJS_SERVICE_ID: 'service_2hh2368',
   EMAILJS_PUBLIC_KEY: 'MvoE6IVKYaAJ4FbPu',
   EMAILJS_CONTACT_TEMPLATE_ID: 'template_zuoas3f', // "Contact Us" template
 };
