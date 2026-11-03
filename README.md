@@ -106,7 +106,7 @@ New contact messages and bookings are emailed to everyone in `ADMIN_EMAILS` (top
 | `EMAILJS_SERVICE_ID` | Text | Service ID, e.g. `service_abc123` |
 | `EMAILJS_PUBLIC_KEY` | Text | Account > General > Public Key |
 | `EMAILJS_PRIVATE_KEY` | **Secret** | Account > General > Private Key |
-| `EMAILJS_CONTACT_TEMPLATE_ID` | Text | Contact message template ID |
+| `EMAILJS_CONTACT_TEMPLATE_ID` | Text | Optional — the "Contact Us" template `template_zuoas3f` is built into the Worker code (`EMAILJS_DEFAULTS`); set this only to override it |
 | `EMAILJS_BOOKING_TEMPLATE_ID` | Text | Booking template ID (optional — without it, booking emails are skipped and logged) |
 
 The free EmailJS plan allows 200 emails/month; each message/booking uses one.

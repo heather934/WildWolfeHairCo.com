@@ -43,6 +43,12 @@
  * namespace, to keep them from being scripted/spammed.
  */
 
+// EmailJS template IDs aren't secret, so they live here; a Worker variable of
+// the same name, if set, overrides the value below.
+const EMAILJS_DEFAULTS = {
+  EMAILJS_CONTACT_TEMPLATE_ID: 'template_zuoas3f', // "Contact Us" template
+};
+
 const ADMIN_EMAILS = [
   { email: 'zoee.burley@yahoo.com', name: 'Zoee Burley' },
   { email: 'h.m.ward1846@gmail.com', name: 'Admin' },
@@ -267,7 +273,7 @@ async function handleContactMessage(data, env, corsHeaders, ip) {
 //   EMAILJS_SERVICE_ID            (plain text) e.g. service_abc123
 //   EMAILJS_PUBLIC_KEY            (plain text) Account > General > Public Key
 //   EMAILJS_PRIVATE_KEY           (SECRET)     Account > General > Private Key
-//   EMAILJS_CONTACT_TEMPLATE_ID   (plain text) template for contact messages
+//   EMAILJS_CONTACT_TEMPLATE_ID   (plain text) optional - defaults to EMAILJS_DEFAULTS
 //   EMAILJS_BOOKING_TEMPLATE_ID   (plain text) template for bookings (optional)
 // and in EmailJS, Account > Security > "Allow EmailJS API for non-browser
 // applications" must be ON.
@@ -275,7 +281,8 @@ async function handleContactMessage(data, env, corsHeaders, ip) {
 // Template variables are escaped by EmailJS when used as {{name}}, so
 // visitor-supplied text can't inject markup into the email.
 async function sendEmailJS(env, templateVar, templateParams) {
-  const missing = ['EMAILJS_SERVICE_ID', 'EMAILJS_PUBLIC_KEY', 'EMAILJS_PRIVATE_KEY', templateVar].filter((k) => !env[k]);
+  const setting = (k) => env[k] || EMAILJS_DEFAULTS[k];
+  const missing = ['EMAILJS_SERVICE_ID', 'EMAILJS_PUBLIC_KEY', 'EMAILJS_PRIVATE_KEY', templateVar].filter((k) => !setting(k));
   if (missing.length) {
     throw new Error(`EmailJS is not configured - missing: ${missing.join(', ')}`);
   }
@@ -285,7 +292,7 @@ async function sendEmailJS(env, templateVar, templateParams) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       service_id: env.EMAILJS_SERVICE_ID,
-      template_id: env[templateVar],
+      template_id: setting(templateVar),
       user_id: env.EMAILJS_PUBLIC_KEY,
       accessToken: env.EMAILJS_PRIVATE_KEY,
       template_params: {
