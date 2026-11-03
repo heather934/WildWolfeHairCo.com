@@ -103,7 +103,7 @@ New contact messages and bookings are emailed to everyone in `ADMIN_EMAILS` (top
 
 | Name | Type | Value |
 | --- | --- | --- |
-| `EMAILJS_SERVICE_ID` | Text | Service ID, e.g. `service_abc123` |
+| `EMAILJS_SERVICE_ID` | Text | Optional — the Service ID is built into the Worker code (`EMAILJS_DEFAULTS`); set this only to override it |
 | `EMAILJS_PUBLIC_KEY` | Text | Optional — the public key is built into the Worker code (`EMAILJS_DEFAULTS`); set this only to override it |
 | `EMAILJS_PRIVATE_KEY` | **Secret** | Account > General > Private Key |
 | `EMAILJS_CONTACT_TEMPLATE_ID` | Text | Optional — the "Contact Us" template `template_zuoas3f` is built into the Worker code (`EMAILJS_DEFAULTS`); set this only to override it |
